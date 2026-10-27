@@ -1,0 +1,6 @@
+{
+  "name": "m3",
+  "description": "Nairobi Electric Transit & SACCO Mobility App with interactive real-time route discovery, fleet tracking, and trip planning.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

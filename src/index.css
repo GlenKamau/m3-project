@@ -1,0 +1,122 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --color-primary: #0b1b3d;
+    --color-accent: #00e575;
+    --color-accent-subtle: #e6fcf1;
+    --color-surface: #f9f9ff;
+    --color-canvas: #f6f8fa;
+    --color-text-main: #111827;
+    --color-text-muted: #6b7280;
+    --color-border: #e5e7eb;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #f6f8fa;
+    color: #111827;
+    -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, .font-heading {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Custom scrollbar hiding for horizontal chip carousels */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Leaflet map styles */
+.leaflet-container {
+  font-family: 'Inter', sans-serif !important;
+  background-color: #f1f4f8 !important;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+}
+
+.leaflet-control-zoom {
+  border: none !important;
+  box-shadow: 0 4px 16px rgba(11, 27, 61, 0.12) !important;
+  border-radius: 9999px !important;
+  overflow: hidden;
+}
+
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border-bottom: 1px solid #f0f2f5 !important;
+  width: 38px !important;
+  height: 38px !important;
+  line-height: 38px !important;
+  font-weight: 700 !important;
+  font-size: 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.15s ease;
+}
+
+.leaflet-control-zoom-in:hover,
+.leaflet-control-zoom-out:hover {
+  background-color: #f6f8fa !important;
+  color: #0b1b3d !important;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 1rem !important;
+  padding: 4px !important;
+  box-shadow: 0 10px 30px rgba(11, 27, 61, 0.18) !important;
+  border: 1px solid #f0f2f5 !important;
+}
+
+.leaflet-popup-content {
+  margin: 12px 14px !important;
+  line-height: 1.4 !important;
+}
+
+.leaflet-popup-tip {
+  background: #ffffff !important;
+}
+
+/* Live vehicle beacon pulsating animation */
+@keyframes beacon-pulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.9;
+  }
+  70% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+.beacon-wave {
+  animation: beacon-pulse 2s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+}
+
+@keyframes bus-wiggle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.bus-wiggle {
+  animation: bus-wiggle 3s ease-in-out infinite;
+}
