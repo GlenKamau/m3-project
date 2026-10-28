@@ -7,13 +7,14 @@
  * corruption recovery, deduplication, and cross-component updates.
  */
 
-import { SavedPlace, RecentSearch, TransportPreferences } from '../types/transit';
-import { MOCK_SAVED_PLACES, SACCOS } from '../data/mockData';
+import { SavedPlace, RecentSearch, TransportPreferences, PastTrip, TripStatus } from '../types/transit';
+import { MOCK_SAVED_PLACES, MOCK_PAST_TRIPS, SACCOS } from '../data/mockData';
 
 export const STORAGE_KEYS = {
   SAVED_PLACES: 'm3_saved_places',
   RECENT_SEARCHES: 'm3_recent_searches',
   TRANSPORT_PREFERENCES: 'm3_transport_preferences',
+  TRIP_HISTORY: 'm3_trip_history',
 } as const;
 
 export const STORAGE_EVENT = 'm3_storage_update';
@@ -124,6 +125,13 @@ export function isValidRecentSearch(item: unknown): item is RecentSearch {
 
 export const VALID_SACCO_IDS = new Set(SACCOS.filter((s) => s.id !== 'all').map((s) => s.id));
 
+export const VALID_TRIP_STATUSES = new Set<TripStatus>([
+  'Planned',
+  'In progress',
+  'Completed',
+  'Cancelled',
+]);
+
 export function isValidTransportPreferences(item: unknown): item is TransportPreferences {
   if (!item || typeof item !== 'object') return false;
   const p = item as Record<string, unknown>;
@@ -135,6 +143,34 @@ export function isValidTransportPreferences(item: unknown): item is TransportPre
     if (typeof id !== 'string' || !VALID_SACCO_IDS.has(id)) {
       return false;
     }
+  }
+
+  return true;
+}
+
+export function isValidTripRecord(item: unknown): item is PastTrip {
+  if (!item || typeof item !== 'object') return false;
+  const t = item as Record<string, unknown>;
+
+  if (typeof t.id !== 'string' || !t.id.trim()) return false;
+  if (typeof t.origin !== 'string' || !t.origin.trim()) return false;
+  if (typeof t.destination !== 'string' || !t.destination.trim()) return false;
+  if (typeof t.originLat !== 'number' || isNaN(t.originLat) || t.originLat < -90 || t.originLat > 90) return false;
+  if (typeof t.originLng !== 'number' || isNaN(t.originLng) || t.originLng < -180 || t.originLng > 180) return false;
+  if (typeof t.destinationLat !== 'number' || isNaN(t.destinationLat) || t.destinationLat < -90 || t.destinationLat > 90) return false;
+  if (typeof t.destinationLng !== 'number' || isNaN(t.destinationLng) || t.destinationLng < -180 || t.destinationLng > 180) return false;
+  if (typeof t.routeId !== 'string' || !t.routeId.trim()) return false;
+  if (typeof t.routeCode !== 'string' || !t.routeCode.trim()) return false;
+  if (typeof t.saccoId !== 'string' || !t.saccoId.trim()) return false;
+  if (typeof t.saccoName !== 'string' || !t.saccoName.trim()) return false;
+  if (typeof t.timestamp !== 'string' || isNaN(Date.parse(t.timestamp))) return false;
+  if (typeof t.status !== 'string' || !VALID_TRIP_STATUSES.has(t.status as TripStatus)) return false;
+
+  if (t.fareKes !== null && t.fareKes !== undefined) {
+    if (typeof t.fareKes !== 'number' || isNaN(t.fareKes) || t.fareKes < 0) return false;
+  }
+  if (t.durationMinutes !== null && t.durationMinutes !== undefined) {
+    if (typeof t.durationMinutes !== 'number' || isNaN(t.durationMinutes) || t.durationMinutes < 0) return false;
   }
 
   return true;
@@ -465,3 +501,194 @@ export function resetTransportPreferences(): TransportPreferences {
   setItem(STORAGE_KEYS.TRANSPORT_PREFERENCES, JSON.stringify(defaults));
   return defaults;
 }
+
+// ---------------------------------------------------------------------------
+// Trip History API (Planned, In progress, Completed, Cancelled)
+// Kept strictly separate from Recent Searches.
+// ---------------------------------------------------------------------------
+
+export const MAX_TRIP_HISTORY = 50;
+
+export interface CreateTripInput {
+  origin: string;
+  originLat: number;
+  originLng: number;
+  originStopId?: string;
+  destination: string;
+  destinationLat: number;
+  destinationLng: number;
+  destinationStopId?: string;
+  routeId: string;
+  routeCode: string;
+  routeName?: string;
+  saccoId: string;
+  saccoName: string;
+  fareKes?: number | null;
+  durationMinutes?: number | null;
+  isElectric: boolean;
+  status: TripStatus;
+  mpesaRef?: string;
+}
+
+/**
+ * Retrieve persisted trip history records.
+ * Seeds with MOCK_PAST_TRIPS on first load and safely recovers from corrupted storage.
+ * Enforces the 50-record limit.
+ */
+export function getTripHistory(): PastTrip[] {
+  const raw = getItem(STORAGE_KEYS.TRIP_HISTORY);
+  if (!raw) {
+    const defaults = [...MOCK_PAST_TRIPS];
+    try {
+      setItem(STORAGE_KEYS.TRIP_HISTORY, JSON.stringify(defaults));
+    } catch {
+      // Ignore write failure
+    }
+    return defaults;
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      console.warn('[m3 storage] Trip history payload is not an array. Recovering defaults.');
+      const defaults = [...MOCK_PAST_TRIPS];
+      setItem(STORAGE_KEYS.TRIP_HISTORY, JSON.stringify(defaults));
+      return defaults;
+    }
+
+    const validTrips = parsed.filter(isValidTripRecord);
+    if (validTrips.length === 0 && parsed.length > 0) {
+      console.warn('[m3 storage] No valid trip records found in corrupted array. Recovering defaults.');
+      const defaults = [...MOCK_PAST_TRIPS];
+      setItem(STORAGE_KEYS.TRIP_HISTORY, JSON.stringify(defaults));
+      return defaults;
+    }
+
+    return validTrips.slice(0, MAX_TRIP_HISTORY);
+  } catch (err) {
+    console.error('[m3 storage] Corrupted JSON in trip history storage. Recovering defaults.', err);
+    const defaults = [...MOCK_PAST_TRIPS];
+    setItem(STORAGE_KEYS.TRIP_HISTORY, JSON.stringify(defaults));
+    return defaults;
+  }
+}
+
+/**
+ * Record a new trip (Planned, In progress, Completed, or Cancelled) in history.
+ * Avoids duplicate records caused by rapid repeated event handlers and caps at 50 records.
+ */
+export function recordTrip(input: CreateTripInput): PastTrip[] {
+  const existing = getTripHistory();
+  const now = new Date();
+  const nowMs = now.getTime();
+
+  // Deduplicate rapid identical trip creations within 2.5 seconds
+  const duplicateIndex = existing.findIndex((t) => {
+    const tMs = Date.parse(t.timestamp);
+    return (
+      !isNaN(tMs) &&
+      Math.abs(nowMs - tMs) < 2500 &&
+      t.routeId === input.routeId &&
+      t.origin.toLowerCase() === input.origin.trim().toLowerCase() &&
+      t.destination.toLowerCase() === input.destination.trim().toLowerCase() &&
+      t.status === input.status
+    );
+  });
+
+  if (duplicateIndex === 0) {
+    return existing;
+  }
+
+  const formattedDate = now.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+  });
+  const formattedTime = now.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  const newTrip: PastTrip = {
+    id: `trip-${nowMs}-${Math.random().toString(36).substring(2, 7)}`,
+    origin: input.origin.trim(),
+    originLat: input.originLat,
+    originLng: input.originLng,
+    originStopId: input.originStopId,
+    destination: input.destination.trim(),
+    destinationLat: input.destinationLat,
+    destinationLng: input.destinationLng,
+    destinationStopId: input.destinationStopId,
+    routeId: input.routeId,
+    routeCode: input.routeCode,
+    routeName: input.routeName,
+    saccoId: input.saccoId,
+    saccoName: input.saccoName,
+    timestamp: now.toISOString(),
+    date: formattedDate,
+    time: formattedTime,
+    fareKes:
+      typeof input.fareKes === 'number' && !isNaN(input.fareKes) ? input.fareKes : null,
+    mpesaRef:
+      input.mpesaRef || `DEMO-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+    isElectric: Boolean(input.isElectric),
+    durationMinutes:
+      typeof input.durationMinutes === 'number' && !isNaN(input.durationMinutes)
+        ? input.durationMinutes
+        : null,
+    status: VALID_TRIP_STATUSES.has(input.status) ? input.status : 'Planned',
+    isPrototypeAction: true,
+  };
+
+  if (!isValidTripRecord(newTrip)) {
+    throw new Error('Invalid trip record data provided.');
+  }
+
+  const updated = [newTrip, ...existing].slice(0, MAX_TRIP_HISTORY);
+  setItem(STORAGE_KEYS.TRIP_HISTORY, JSON.stringify(updated));
+  return updated;
+}
+
+/**
+ * Update the status of an existing trip record ('Planned' | 'In progress' | 'Completed' | 'Cancelled').
+ */
+export function updateTripStatus(tripId: string, newStatus: TripStatus): PastTrip[] {
+  if (!VALID_TRIP_STATUSES.has(newStatus)) {
+    return getTripHistory();
+  }
+
+  const existing = getTripHistory();
+  const idx = existing.findIndex((t) => t.id === tripId);
+  if (idx < 0) {
+    return existing;
+  }
+
+  const updated = [...existing];
+  updated[idx] = {
+    ...updated[idx],
+    status: newStatus,
+    isPrototypeAction: true,
+  };
+
+  setItem(STORAGE_KEYS.TRIP_HISTORY, JSON.stringify(updated));
+  return updated;
+}
+
+/**
+ * Delete a single trip record by ID.
+ */
+export function deleteTripRecord(tripId: string): PastTrip[] {
+  const existing = getTripHistory();
+  const updated = existing.filter((t) => t.id !== tripId);
+  setItem(STORAGE_KEYS.TRIP_HISTORY, JSON.stringify(updated));
+  return updated;
+}
+
+/**
+ * Reset trip history to default demo records.
+ */
+export function resetTripHistoryToDefaults(): PastTrip[] {
+  const defaults = [...MOCK_PAST_TRIPS];
+  setItem(STORAGE_KEYS.TRIP_HISTORY, JSON.stringify(defaults));
+  return defaults;
+}
+

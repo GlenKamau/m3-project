@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { RouteOption, Vehicle } from '../../types/transit';
+import { formatRouteFare, formatRouteDuration } from '../../utils/journeyHelper';
 import { X, QrCode, CheckCircle2, ShieldCheck, Zap, ArrowRight, Clock, MapPin, Sparkles } from 'lucide-react';
 
 interface TicketModalProps {
@@ -76,7 +77,7 @@ export const TicketModal: React.FC<TicketModalProps> = ({
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="bg-[#f9f9ff] p-2.5 rounded-xl border border-slate-100">
               <span className="text-[10px] text-slate-500 block uppercase font-semibold">Demo Fare</span>
-              <span className="text-sm font-extrabold text-[#0b1b3d]">KES {route.demoFareKes}</span>
+              <span className="text-sm font-extrabold text-[#0b1b3d]">{formatRouteFare(route.demoFareKes)}</span>
             </div>
             <div className="bg-[#f9f9ff] p-2.5 rounded-xl border border-slate-100">
               <span className="text-[10px] text-slate-500 block uppercase font-semibold">Seat (Sim.)</span>
@@ -84,7 +85,7 @@ export const TicketModal: React.FC<TicketModalProps> = ({
             </div>
             <div className="bg-[#f9f9ff] p-2.5 rounded-xl border border-slate-100">
               <span className="text-[10px] text-slate-500 block uppercase font-semibold">ETA</span>
-              <span className="text-sm font-extrabold text-emerald-600">~{route.durationMinutes} min</span>
+              <span className="text-sm font-extrabold text-emerald-600">{formatRouteDuration(route.durationMinutes)}</span>
             </div>
           </div>
 

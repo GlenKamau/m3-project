@@ -11,6 +11,7 @@ import {
   stepVehicleSimulation, 
   AnimatedVehicleState 
 } from '../../utils/vehicleSimulation';
+import { isValidRouteGeometry } from '../../utils/journeyHelper';
 import { MOCK_ROUTES } from '../../data/mockData';
 import { 
   Navigation2, 
@@ -74,6 +75,7 @@ export const NairobiMap: React.FC<NairobiMapProps> = ({
   // UI state
   const [showStops, setShowStops] = useState<boolean>(true);
   const [mapError, setMapError] = useState<string | null>(null);
+  const [routeGeometryMissing, setRouteGeometryMissing] = useState<boolean>(false);
   const [tileProviderName, setTileProviderName] = useState<string>('MapTiler Streets');
   const [inspectedVehicle, setInspectedVehicle] = useState<Vehicle | null>(selectedVehicle);
 
@@ -339,12 +341,17 @@ export const NairobiMap: React.FC<NairobiMapProps> = ({
     intermediateMarkersRef.current.forEach((marker) => marker.remove());
     intermediateMarkersRef.current = [];
 
-    if (!selectedRoute && !originStop && !destinationStop) return;
+    if (!selectedRoute && !originStop && !destinationStop) {
+      setRouteGeometryMissing(false);
+      return;
+    }
 
     const boundsPoints: [number, number][] = [];
+    const hasValidRoadGeometry = selectedRoute ? isValidRouteGeometry(selectedRoute) : false;
+    setRouteGeometryMissing(Boolean(selectedRoute && !hasValidRoadGeometry));
 
-    // Draw main route polyline
-    if (selectedRoute && selectedRoute.waypoints.length >= 2) {
+    // Draw main route polyline strictly when road-following geometry is valid (>= 3 waypoints)
+    if (selectedRoute && hasValidRoadGeometry) {
       const polyline = L.polyline(selectedRoute.waypoints, {
         color: selectedRoute.isElectric ? '#00e575' : '#0b1b3d',
         weight: 6,
@@ -504,6 +511,17 @@ export const NairobiMap: React.FC<NairobiMapProps> = ({
           >
             <X className="w-3.5 h-3.5" />
           </button>
+        </div>
+      )}
+
+      {/* Route Geometry Unavailable Overlay */}
+      {routeGeometryMissing && (
+        <div className="absolute top-14 left-3 right-16 z-30 bg-rose-50/95 backdrop-blur-md border border-rose-300 rounded-2xl p-2.5 shadow-md flex items-start gap-2 text-xs text-rose-900">
+          <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+          <div className="flex-1 text-[11px] leading-tight">
+            <span className="font-bold block">Route Geometry Unavailable</span>
+            <span>Road-following path data is unavailable for this route. Straight-line fallback is disabled.</span>
+          </div>
         </div>
       )}
 

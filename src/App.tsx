@@ -34,6 +34,17 @@ export default function App() {
     setCurrentTab('activity');
   };
 
+  // Keep journey selections synchronized when user edits them in Activity
+  const handleUpdateJourneyState = (
+    originQuery: string,
+    destinationQuery: string,
+    selectedRouteId?: string | null
+  ) => {
+    setActiveOrigin(originQuery);
+    setActiveDestination(destinationQuery);
+    setActiveRouteId(selectedRouteId || undefined);
+  };
+
   return (
     <div className="min-h-screen bg-[#f6f8fa] text-[#111827] flex flex-col selection:bg-[#00e575] selection:text-[#0b1b3d]">
       {/* Top Header with lowercase m3 branding */}
@@ -59,11 +70,14 @@ export default function App() {
             initialOrigin={activeOrigin}
             initialDestination={activeDestination}
             initialRouteId={activeRouteId}
+            onUpdateJourneyState={handleUpdateJourneyState}
           />
         )}
 
         {currentTab === 'account' && (
-          <AccountScreen />
+          <AccountScreen
+            onReturnToPlanner={() => setCurrentTab('activity')}
+          />
         )}
       </main>
 
@@ -75,3 +89,4 @@ export default function App() {
     </div>
   );
 }
+

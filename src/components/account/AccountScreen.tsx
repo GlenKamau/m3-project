@@ -17,6 +17,8 @@ import {
   STORAGE_EVENT 
 } from '../../utils/storage';
 import { SavedPlaceModal } from '../modals/SavedPlaceModal';
+import { CommuterGuideModal } from '../modals/CommuterGuideModal';
+import { COMMUTER_GUIDE_SECTIONS } from '../../data/commuterGuideData';
 import { 
   User, 
   Zap, 
@@ -32,6 +34,11 @@ import {
   Check, 
   ExternalLink,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  BookOpen,
+  Compass,
+  AlertTriangle,
   Info,
   PhoneCall,
   Sparkles,
@@ -41,9 +48,13 @@ import {
 
 interface AccountScreenProps {
   onUpdatePreferredSaccos?: (saccoIds: string[]) => void;
+  onReturnToPlanner?: () => void;
 }
 
-export const AccountScreen: React.FC<AccountScreenProps> = ({ onUpdatePreferredSaccos }) => {
+export const AccountScreen: React.FC<AccountScreenProps> = ({
+  onUpdatePreferredSaccos,
+  onReturnToPlanner,
+}) => {
   const [profile, setProfile] = useState<UserProfile>(INITIAL_USER_PROFILE);
   const [savedPlaces, setSavedPlaces] = useState<SavedPlace[]>(() => getSavedPlaces());
   const [transportPrefs, setTransportPrefs] = useState<TransportPreferences>(() => getTransportPreferences());
@@ -52,6 +63,9 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({ onUpdatePreferredS
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState('500');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [expandedGuideId, setExpandedGuideId] = useState<string | null>(null);
+  const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
+  const [activeGuideSectionId, setActiveGuideSectionId] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -473,14 +487,151 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({ onUpdatePreferredS
         </div>
       </section>
 
-      {/* 6. SACCO Support & Help Lines */}
+      {/* 6. Nairobi Commuter Guide (Compact Expandable Handbook) */}
+      <section className="bg-white rounded-3xl p-5 border border-[#e5e7eb] shadow-xs space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-2xl bg-[#0b1b3d] text-[#00e575] flex items-center justify-center shrink-0">
+              <BookOpen className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-[#111827]">
+                Nairobi Commuter Guide
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                Practical handbook for visitors & newcomers ({COMMUTER_GUIDE_SECTIONS.length} topics)
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveGuideSectionId(null);
+              setIsGuideModalOpen(true);
+            }}
+            className="shrink-0 px-3 py-1.5 rounded-full bg-[#f6f8fa] hover:bg-slate-200 text-[#0b1b3d] font-bold text-xs transition flex items-center gap-1 border border-slate-200"
+          >
+            <span>Full Guide</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <div className="bg-amber-50/70 border border-amber-200/70 rounded-2xl p-2.5 text-[11px] text-amber-900 flex items-start gap-2">
+          <Info className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+          <span>
+            <strong>General Guidance vs. Local Verification:</strong> Practices, fares, and stage bays vary by SACCO and route. Always confirm details locally with uniformed stage marshals or conductors.
+          </span>
+        </div>
+
+        {/* Compact Expandable Accordion for all 8 Guide Sections */}
+        <div className="space-y-2">
+          {COMMUTER_GUIDE_SECTIONS.map((sec) => {
+            const isExpanded = expandedGuideId === sec.id;
+            return (
+              <div
+                key={sec.id}
+                className={`rounded-2xl border transition-all overflow-hidden ${
+                  isExpanded
+                    ? 'border-[#0b1b3d] bg-[#f9f9ff]'
+                    : 'border-slate-200/90 bg-white hover:bg-slate-50/70'
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedGuideId(isExpanded ? null : sec.id)
+                  }
+                  className="w-full px-3.5 py-2.5 text-left flex items-center justify-between gap-2.5"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span
+                      className={`w-5 h-5 rounded-md text-[11px] font-extrabold flex items-center justify-center shrink-0 ${
+                        isExpanded
+                          ? 'bg-[#0b1b3d] text-[#00e575]'
+                          : 'bg-slate-100 text-slate-700'
+                      }`}
+                    >
+                      {sec.number}
+                    </span>
+                    <span className="text-xs font-bold text-slate-900 truncate">
+                      {sec.title}
+                    </span>
+                  </div>
+                  {isExpanded ? (
+                    <ChevronUp className="w-4 h-4 text-[#0b1b3d] shrink-0" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+                  )}
+                </button>
+
+                {isExpanded && (
+                  <div className="px-3.5 pb-3.5 pt-1 border-t border-slate-200/60 space-y-2.5 text-xs">
+                    <p className="text-[11px] text-slate-500 font-medium">
+                      {sec.summary}
+                    </p>
+                    <ul className="space-y-1.5 text-slate-700 text-[11px] leading-relaxed">
+                      {sec.generalGuidance.map((item, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#0b1b3d] mt-1.5 shrink-0" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    {sec.terms && sec.terms.length > 0 && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+                        {sec.terms.map((t) => (
+                          <div
+                            key={t.term}
+                            className="bg-white p-2 rounded-xl border border-slate-200/80"
+                          >
+                            <span className="font-bold text-[#0b1b3d] block text-[11px]">
+                              {t.term}
+                            </span>
+                            <span className="text-[10px] text-slate-600">
+                              {t.meaning}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="bg-white border border-slate-200 rounded-xl p-2 flex items-start gap-1.5 text-[10px] text-slate-600">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <strong className="text-slate-800">Verify Locally: </strong>
+                        {sec.verifyLocallyNote}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Return to Journey Planning without losing selections */}
+        {onReturnToPlanner && (
+          <button
+            type="button"
+            onClick={onReturnToPlanner}
+            className="w-full py-2.5 px-4 rounded-2xl bg-[#f6f8fa] hover:bg-emerald-50 text-[#0b1b3d] border border-slate-200 hover:border-emerald-300 font-bold text-xs transition flex items-center justify-center gap-2"
+          >
+            <Compass className="w-3.5 h-3.5 text-[#006d43]" />
+            <span>Return to Journey Planner (Selections Preserved)</span>
+          </button>
+        )}
+      </section>
+
+      {/* 7. SACCO Support & Help Lines */}
       <section className="bg-slate-50 rounded-3xl p-5 border border-slate-200 text-xs space-y-3">
         <div className="flex items-center gap-2">
           <PhoneCall className="w-4 h-4 text-[#0b1b3d]" />
           <h3 className="font-bold text-[#111827]">SACCO Transit Support (Nairobi)</h3>
         </div>
         <p className="text-[11px] text-slate-500">
-          Lost items, route inquiries, or safety hotline numbers:
+          Demo operator contact references (verify official customer care numbers locally):
         </p>
         <div className="grid grid-cols-2 gap-2 text-[11px]">
           <div className="bg-white p-2 rounded-xl border border-slate-200">
@@ -564,6 +715,15 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({ onUpdatePreferredS
           handleDeletePlace(id);
         }}
       />
+
+      {/* Full Searchable Commuter Guide Modal */}
+      <CommuterGuideModal
+        isOpen={isGuideModalOpen}
+        initialSectionId={activeGuideSectionId}
+        onClose={() => setIsGuideModalOpen(false)}
+        onReturnToPlanner={onReturnToPlanner}
+      />
     </div>
   );
 };
+

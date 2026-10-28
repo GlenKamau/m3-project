@@ -25,13 +25,28 @@ import {
   togglePreferredSacco,
   setPrioritizePreferred,
   resetTransportPreferences,
+  isValidTripRecord,
+  getTripHistory,
+  recordTrip,
+  updateTripStatus,
+  deleteTripRecord,
+  resetTripHistoryToDefaults,
   VALID_SACCO_IDS,
   DEFAULT_TRANSPORT_PREFERENCES,
   STORAGE_KEYS,
-  MAX_RECENT_SEARCHES
+  MAX_RECENT_SEARCHES,
+  MAX_TRIP_HISTORY
 } from '../src/utils/storage';
-import { TRANSIT_STOPS, MOCK_SAVED_PLACES, MOCK_PAST_TRIPS, SACCOS, MOCK_VEHICLES, MOCK_ROUTES, matchStopByQuery } from '../src/data/mockData';
-import { SavedPlace, RecentSearch, TransportPreferences } from '../src/types/transit';
+import {
+  isValidRouteGeometry,
+  buildJourneyDirections,
+  sortRouteOptions,
+  formatRouteDuration,
+  formatRouteFare
+} from '../src/utils/journeyHelper';
+import { COMMUTER_GUIDE_SECTIONS } from '../src/data/commuterGuideData';
+import { TRANSIT_STOPS, MOCK_SAVED_PLACES, MOCK_PAST_TRIPS, SACCOS, MOCK_VEHICLES, MOCK_ROUTES, matchStopByQuery, findOrCreateRoute } from '../src/data/mockData';
+import { SavedPlace, RecentSearch, TransportPreferences, RouteOption } from '../src/types/transit';
 
 interface TestResult {
   name: string;
@@ -456,6 +471,261 @@ async function runStorageRegressionSuite() {
   );
 
   // -------------------------------------------------------------------------
+  // TEST GROUP 6: Step-by-Step Journey Directions & Safe Route Comparisons
+  // -------------------------------------------------------------------------
+  console.log('\nGROUP 6: Step-by-Step Journey Directions & Route Comparisons:');
+
+  const sampleRoute = MOCK_ROUTES[0]; // Kencom -> Museum Hill -> Westlands
+  assert(
+    isValidRouteGeometry(sampleRoute),
+    '6.1 Valid road-following route geometry passes isValidRouteGeometry check'
+  );
+
+  const straightLineFakeRoute: RouteOption = {
+    ...sampleRoute,
+    waypoints: [
+      [-1.2844, 36.8249],
+      [-1.2655, 36.8048],
+    ], // Only 2 endpoints (straight line)
+  };
+  assert(
+    !isValidRouteGeometry(straightLineFakeRoute),
+    '6.2 Straight-line 2-point route is rejected by isValidRouteGeometry'
+  );
+
+  const steps = buildJourneyDirections(sampleRoute, 'City Hall Way', 'Sarit Centre Office');
+  assert(
+    steps.length === 5 &&
+      steps[0].type === 'origin' &&
+      steps[1].type === 'board' &&
+      steps[2].type === 'intermediate' &&
+      steps[3].type === 'alight' &&
+      steps[4].type === 'destination',
+    '6.3 buildJourneyDirections generates ordered origin, board, intermediate, alight, and destination steps',
+    `Got steps: ${steps.map((s) => s.type).join(' -> ')}`
+  );
+
+  const boardStopId: string | undefined = steps[1].stop?.id;
+  const alightStopId: string | undefined = steps[3].stop?.id;
+  assert(
+    Boolean(boardStopId && alightStopId && boardStopId !== alightStopId && boardStopId === 'stop-kencom' && alightStopId === 'stop-westlands'),
+    '6.4 Boarding stop (Kencom) and Alighting stop (Westlands) are distinct and match route stops'
+  );
+
+  // Cross-corridor route with transfer info (e.g. Westlands -> Karen)
+  const stopWest = matchStopByQuery('Westlands')!;
+  const stopKar = matchStopByQuery('Karen')!;
+  const transferRoute = findOrCreateRoute(stopWest, stopKar);
+  assert(
+    !!transferRoute && transferRoute.transfersCount === 1 && !!transferRoute.transferInfo,
+    '6.5 Cross-corridor journey (Westlands -> Karen) includes transfer metadata at CBD terminal'
+  );
+
+  const transferSteps = buildJourneyDirections(transferRoute!);
+  assert(
+    transferSteps.some((s) => s.type === 'transfer' && !!s.transferInfo?.nextRouteCode),
+    '6.6 Step-by-step directions include explicit transfer instruction identifying next route and SACCO'
+  );
+
+  // Route comparison: missing fares or durations must NOT be treated as 0
+  const routeWithMissingMetrics: RouteOption = {
+    ...MOCK_ROUTES[0],
+    id: 'route-missing-metrics',
+    demoFareKes: null,
+    durationMinutes: null,
+  };
+  const routeCheapFast: RouteOption = {
+    ...MOCK_ROUTES[1],
+    id: 'route-cheap-fast',
+    demoFareKes: 60,
+    durationMinutes: 14,
+  };
+  const routeExpensiveSlow: RouteOption = {
+    ...MOCK_ROUTES[2],
+    id: 'route-exp-slow',
+    demoFareKes: 120,
+    durationMinutes: 35,
+  };
+
+  const sortedByFare = sortRouteOptions(
+    [routeWithMissingMetrics, routeExpensiveSlow, routeCheapFast],
+    'cheapest'
+  );
+  assert(
+    sortedByFare[0].id === 'route-cheap-fast' &&
+      sortedByFare[1].id === 'route-exp-slow' &&
+      sortedByFare[2].id === 'route-missing-metrics',
+    '6.7 Sorting by lowest fare places missing/null fare at the end (never treated as KES 0)'
+  );
+
+  const sortedByDuration = sortRouteOptions(
+    [routeWithMissingMetrics, routeExpensiveSlow, routeCheapFast],
+    'fastest'
+  );
+  assert(
+    sortedByDuration[0].id === 'route-cheap-fast' &&
+      sortedByDuration[1].id === 'route-exp-slow' &&
+      sortedByDuration[2].id === 'route-missing-metrics',
+    '6.8 Sorting by fastest duration places missing/null duration at the end (never treated as 0 min)'
+  );
+
+  assert(
+    formatRouteFare(null) === 'Fare unavailable' &&
+      formatRouteDuration(null) === 'Duration unavailable',
+    '6.9 Missing fare and duration format safely as unavailable rather than 0'
+  );
+
+  // -------------------------------------------------------------------------
+  // TEST GROUP 7: Trip History, Status Transitions & Repeat Journeys
+  // -------------------------------------------------------------------------
+  console.log('\nGROUP 7: Trip History Persistence, Statuses & Repeat Journeys:');
+
+  resetTripHistoryToDefaults();
+  clearRecentSearches();
+
+  const initialTrips = getTripHistory();
+  assert(
+    initialTrips.length === MOCK_PAST_TRIPS.length &&
+      initialTrips.every(isValidTripRecord),
+    '7.1 Initial trip history loads validated demo records with coordinates'
+  );
+
+  // Destination search must NOT create a completed trip or alter trip history
+  addRecentSearch('Yaya Centre', -1.2925, 36.7876, 'stop-yaya');
+  assert(
+    getTripHistory().length === initialTrips.length,
+    '7.2 Recording a destination search does NOT add a trip to trip history'
+  );
+
+  // Record a Planned trip
+  const afterPlanned = recordTrip({
+    origin: 'Kencom Terminal',
+    originLat: -1.2844,
+    originLng: 36.8249,
+    originStopId: 'stop-kencom',
+    destination: 'Karen Shopping Centre',
+    destinationLat: -1.3195,
+    destinationLng: 36.7067,
+    destinationStopId: 'stop-karen',
+    routeId: 'route-ch111-karen',
+    routeCode: 'CH-111',
+    routeName: 'Ngong Road - Karen Corridor',
+    saccoId: 'city-hoppa',
+    saccoName: 'City Hoppa',
+    fareKes: 90,
+    durationMinutes: 38,
+    isElectric: false,
+    status: 'Planned',
+  });
+
+  const newTrip = afterPlanned[0];
+  assert(
+    newTrip.status === 'Planned' &&
+      newTrip.originLat === -1.2844 &&
+      newTrip.destinationLat === -1.3195 &&
+      newTrip.isPrototypeAction === true,
+    '7.3 Successfully recorded a "Planned" trip with accurate origin & destination coordinates'
+  );
+
+  // Duplicate guard for rapid identical call
+  const afterDuplicateAttempt = recordTrip({
+    origin: 'Kencom Terminal',
+    originLat: -1.2844,
+    originLng: 36.8249,
+    originStopId: 'stop-kencom',
+    destination: 'Karen Shopping Centre',
+    destinationLat: -1.3195,
+    destinationLng: 36.7067,
+    destinationStopId: 'stop-karen',
+    routeId: 'route-ch111-karen',
+    routeCode: 'CH-111',
+    routeName: 'Ngong Road - Karen Corridor',
+    saccoId: 'city-hoppa',
+    saccoName: 'City Hoppa',
+    fareKes: 90,
+    durationMinutes: 38,
+    isElectric: false,
+    status: 'Planned',
+  });
+  assert(
+    afterDuplicateAttempt.length === afterPlanned.length,
+    '7.4 Rapid duplicate trip creation is prevented'
+  );
+
+  // Transition Planned -> In progress -> Completed -> Cancelled
+  const afterInProgress = updateTripStatus(newTrip.id, 'In progress');
+  assert(
+    afterInProgress.find((t) => t.id === newTrip.id)?.status === 'In progress',
+    '7.5 Trip status transitions from "Planned" to "In progress"'
+  );
+
+  const afterCompleted = updateTripStatus(newTrip.id, 'Completed');
+  assert(
+    afterCompleted.find((t) => t.id === newTrip.id)?.status === 'Completed',
+    '7.6 Trip status transitions from "In progress" to "Completed"'
+  );
+
+  const afterCancelled = updateTripStatus(newTrip.id, 'Cancelled');
+  assert(
+    afterCancelled.find((t) => t.id === newTrip.id)?.status === 'Cancelled',
+    '7.7 Trip status transitions to "Cancelled"'
+  );
+
+  // Cap at 50 trips
+  for (let i = 0; i < 60; i++) {
+    const stA = TRANSIT_STOPS[i % TRANSIT_STOPS.length];
+    const stB = TRANSIT_STOPS[(i + 1) % TRANSIT_STOPS.length];
+    recordTrip({
+      origin: `${stA.name} #${i}`,
+      originLat: stA.lat,
+      originLng: stA.lng,
+      originStopId: stA.id,
+      destination: `${stB.name} #${i}`,
+      destinationLat: stB.lat,
+      destinationLng: stB.lng,
+      destinationStopId: stB.id,
+      routeId: `route-test-${i}`,
+      routeCode: `T-${i}`,
+      saccoId: 'super-metro',
+      saccoName: 'Super Metro',
+      fareKes: 70,
+      durationMinutes: 20,
+      isElectric: true,
+      status: 'Completed',
+    });
+  }
+  const cappedTrips = getTripHistory();
+  assert(
+    cappedTrips.length === MAX_TRIP_HISTORY,
+    `7.8 Trip history strictly capped at ${MAX_TRIP_HISTORY} most recent records`,
+    `Got ${cappedTrips.length}`
+  );
+
+  // Clean up back to defaults
+  resetTripHistoryToDefaults();
+
+  // -------------------------------------------------------------------------
+  // TEST GROUP 8: Nairobi Commuter Guide Completeness
+  // -------------------------------------------------------------------------
+  console.log('\nGROUP 8: Nairobi Commuter Guide Content & Structure:');
+
+  assert(
+    COMMUTER_GUIDE_SECTIONS.length === 8,
+    '8.1 Nairobi Commuter Guide contains all 8 required sections'
+  );
+
+  assert(
+    COMMUTER_GUIDE_SECTIONS.every(
+      (s) =>
+        s.id.trim().length > 0 &&
+        s.title.trim().length > 0 &&
+        s.generalGuidance.length > 0 &&
+        s.verifyLocallyNote.trim().length > 0
+    ),
+    '8.2 Every commuter guide section includes general guidance and a local verification notice'
+  );
+
+  // -------------------------------------------------------------------------
   // SUMMARY
   // -------------------------------------------------------------------------
   console.log('\n========================================================');
@@ -473,3 +743,4 @@ runStorageRegressionSuite().catch((err) => {
   console.error('Unhandled test suite error:', err);
   process.exit(1);
 });
+

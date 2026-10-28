@@ -882,63 +882,103 @@ export const MOCK_SAVED_PLACES: SavedPlace[] = [
 export const MOCK_PAST_TRIPS: PastTrip[] = [
   {
     id: 'trip-001',
-    origin: 'Kencom Terminal CBD',
-    destination: 'Westlands (Sarit Centre)',
-    saccoId: 'super-metro',
-    saccoName: 'Super Metro Electric',
+    origin: 'Kencom Terminal',
+    originLat: -1.2844,
+    originLng: 36.8249,
+    originStopId: 'stop-kencom',
+    destination: 'Westlands Stage (Sarit/The Mall)',
+    destinationLat: -1.2655,
+    destinationLng: 36.8048,
+    destinationStopId: 'stop-westlands',
+    routeId: 'route-sm105-westlands',
     routeCode: 'SM-105',
-    date: 'Today, 26 Oct',
+    routeName: 'Super Metro Waiyaki Express',
+    saccoId: 'super-metro',
+    saccoName: 'Super Metro',
+    timestamp: '2026-10-26T08:42:00.000Z',
+    date: '26 Oct',
     time: '08:42 AM',
     fareKes: 60,
-    mpesaRef: 'QKD792LMPA',
+    mpesaRef: 'DEMO-792LMPA',
     isElectric: true,
-    durationMinutes: 15,
+    durationMinutes: 14,
     status: 'Completed',
+    isPrototypeAction: true,
   },
   {
     id: 'trip-002',
-    origin: 'Westlands Stage',
-    destination: 'Upper Hill Financial',
+    origin: 'Westlands Stage (Sarit/The Mall)',
+    originLat: -1.2655,
+    originLng: 36.8048,
+    originStopId: 'stop-westlands',
+    destination: 'Kencom Terminal',
+    destinationLat: -1.2844,
+    destinationLng: 36.8249,
+    destinationStopId: 'stop-kencom',
+    routeId: 'route-e105-kencom',
+    routeCode: 'E-105-REV',
+    routeName: 'Waiyaki Way Green Line (CBD Bound)',
     saccoId: 'basigo',
     saccoName: 'BasiGo Electric',
-    routeCode: 'E-105',
-    date: 'Yesterday, 25 Oct',
+    timestamp: '2026-10-25T17:30:00.000Z',
+    date: '25 Oct',
     time: '05:30 PM',
     fareKes: 70,
-    mpesaRef: 'QKC4419ZKP',
+    mpesaRef: 'DEMO-4419ZKP',
     isElectric: true,
-    durationMinutes: 21,
+    durationMinutes: 15,
     status: 'Completed',
+    isPrototypeAction: true,
   },
   {
     id: 'trip-003',
-    origin: 'Ambassadeur CBD',
+    origin: 'Ambassadeur / Moi Ave',
+    originLat: -1.2868,
+    originLng: 36.8272,
+    originStopId: 'stop-ambassadeur',
     destination: 'Karen Shopping Centre',
+    destinationLat: -1.3195,
+    destinationLng: 36.7067,
+    destinationStopId: 'stop-karen',
+    routeId: 'route-ch111-karen',
+    routeCode: 'CH-111',
+    routeName: 'Ngong Road - Karen Corridor',
     saccoId: 'city-hoppa',
     saccoName: 'City Hoppa',
-    routeCode: 'CH-111',
-    date: 'Fri, 24 Oct',
+    timestamp: '2026-10-24T14:15:00.000Z',
+    date: '24 Oct',
     time: '02:15 PM',
     fareKes: 90,
-    mpesaRef: 'QKB1107LMS',
+    mpesaRef: 'DEMO-1107LMS',
     isElectric: false,
-    durationMinutes: 40,
+    durationMinutes: 38,
     status: 'Completed',
+    isPrototypeAction: true,
   },
   {
     id: 'trip-004',
-    origin: 'Railways CBD',
-    destination: 'JKIA Airport Terminals',
+    origin: 'Nairobi Central Railway',
+    originLat: -1.2912,
+    originLng: 36.8285,
+    originStopId: 'stop-railways',
+    destination: 'JKIA Airport Terminals 1 & 2',
+    destinationLat: -1.3323,
+    destinationLng: 36.9275,
+    destinationStopId: 'stop-jkia',
+    routeId: 'route-bg-airport',
+    routeCode: 'BG-Airport',
+    routeName: 'JKIA Airport Electric Shuttle',
     saccoId: 'basigo',
     saccoName: 'BasiGo Electric',
-    routeCode: 'BG-Airport',
-    date: 'Wed, 22 Oct',
+    timestamp: '2026-10-22T11:10:00.000Z',
+    date: '22 Oct',
     time: '11:10 AM',
     fareKes: 150,
-    mpesaRef: 'QKA8894PLK',
+    mpesaRef: 'DEMO-8894PLK',
     isElectric: true,
-    durationMinutes: 25,
+    durationMinutes: 24,
     status: 'Completed',
+    isPrototypeAction: true,
   },
 ];
 
@@ -1054,6 +1094,28 @@ export function matchStopByQuery(query: string): TransitStop | undefined {
 }
 
 /**
+ * Helper to classify which corridor a stop primarily belongs to
+ */
+function getStopCorridorKey(stopId: string): 'cbd' | 'waiyaki' | 'thika' | 'ngong' | 'mombasa' | 'upperhill' {
+  if (['stop-kencom', 'stop-ambassadeur', 'stop-odeon', 'stop-railways'].includes(stopId)) {
+    return 'cbd';
+  }
+  if (['stop-westlands', 'stop-museum-hill', 'stop-uthiru'].includes(stopId)) {
+    return 'waiyaki';
+  }
+  if (['stop-pangani', 'stop-roysambu', 'stop-kasarani'].includes(stopId)) {
+    return 'thika';
+  }
+  if (['stop-yaya', 'stop-junction', 'stop-karen'].includes(stopId)) {
+    return 'ngong';
+  }
+  if (stopId === 'stop-jkia') {
+    return 'mombasa';
+  }
+  return 'upperhill';
+}
+
+/**
  * Route Resolver: Returns or generates a road-following route connecting two stops.
  * Returns null if endpoints are missing or identical (triggering route-unavailable state).
  */
@@ -1075,7 +1137,12 @@ export function findOrCreateRoute(
       (saccoId === 'all' || r.saccoId === saccoId) &&
       (!isElectricOnly || r.isElectric)
   );
-  if (directMatch) return directMatch;
+  if (directMatch) {
+    return {
+      ...directMatch,
+      transfersCount: directMatch.transfersCount ?? 0,
+    };
+  }
 
   // Check if a reverse route exists
   const reverseMatch = MOCK_ROUTES.find(
@@ -1094,6 +1161,7 @@ export function findOrCreateRoute(
       toStop,
       stops: [...reverseMatch.stops].reverse(),
       waypoints: [...reverseMatch.waypoints].reverse(),
+      transfersCount: reverseMatch.transfersCount ?? 0,
     };
   }
 
@@ -1197,6 +1265,28 @@ export function findOrCreateRoute(
 
   // Sort intermediate stops in direction of travel
   intermediateStops.sort((a, b) => a.distFromStart - b.distFromStart);
+
+  // Detect if origin and destination lie on two non-CBD corridors requiring a CBD interchange
+  const fromCorridor = getStopCorridorKey(fromStop.id);
+  const toCorridor = getStopCorridorKey(toStop.id);
+  const needsCbdTransfer =
+    fromCorridor !== 'cbd' &&
+    toCorridor !== 'cbd' &&
+    fromCorridor !== toCorridor;
+
+  let transferStop: TransitStop | undefined;
+  if (needsCbdTransfer) {
+    transferStop =
+      intermediateStops.find((item) => item.stop.isTerminal)?.stop ||
+      TRANSIT_STOPS[0]; // Kencom Terminal CBD hub
+    if (!intermediateStops.some((item) => item.stop.id === transferStop!.id)) {
+      intermediateStops.splice(Math.floor(intermediateStops.length / 2), 0, {
+        stop: transferStop,
+        distFromStart: Math.floor(path.length / 2),
+      });
+    }
+  }
+
   const orderedStops = [fromStop, ...intermediateStops.map((item) => item.stop), toStop];
 
   // Calculate total route distance in meters
@@ -1208,6 +1298,11 @@ export function findOrCreateRoute(
   const durationMinutes = Math.max(8, Math.round((totalDistMeters / 1000) * 2.2 + 4));
   const demoFareKes = Math.min(180, Math.max(50, Math.round(((totalDistMeters / 1000) * 6) / 10) * 10));
   const co2SavedKg = Number(((totalDistMeters / 1000) * (isElectric ? 0.16 : 0.08)).toFixed(1));
+
+  // If a transfer is involved across two outer corridors, identify the connecting route from MOCK_ROUTES
+  const connectingRoute = needsCbdTransfer
+    ? MOCK_ROUTES.find((r) => r.toStop.id === toStop.id) || MOCK_ROUTES[0]
+    : undefined;
 
   return {
     id: `dyn-route-${fromStop.id}-${toStop.id}`,
@@ -1227,5 +1322,18 @@ export function findOrCreateRoute(
     nextDepartures: ['3 min', '8 min', '15 min'],
     stops: orderedStops,
     waypoints: path,
+    transfersCount: needsCbdTransfer ? 1 : 0,
+    transferInfo:
+      needsCbdTransfer && transferStop && connectingRoute
+        ? {
+            transferStop,
+            nextRouteId: connectingRoute.id,
+            nextRouteCode: connectingRoute.routeCode,
+            nextSaccoId: connectingRoute.saccoId,
+            nextSaccoName: connectingRoute.saccoName,
+            notes: `Alight at ${transferStop.name} (${transferStop.area}) and board ${connectingRoute.saccoName} route ${connectingRoute.routeCode} towards ${toStop.name}.`,
+          }
+        : undefined,
   };
 }
+

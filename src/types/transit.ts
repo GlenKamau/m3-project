@@ -56,6 +56,15 @@ export interface Vehicle {
   isGeometryAvailable?: boolean;
 }
 
+export interface RouteTransferInfo {
+  transferStop: TransitStop;
+  nextRouteId?: string;
+  nextRouteCode: string;
+  nextSaccoId: string;
+  nextSaccoName: string;
+  notes?: string;
+}
+
 export interface RouteOption {
   id: string;
   name: string;
@@ -65,31 +74,78 @@ export interface RouteOption {
   isElectric: boolean;
   fromStop: TransitStop;
   toStop: TransitStop;
-  durationMinutes: number;
+  durationMinutes: number | null;
   walkMinutes: number;
-  demoFareKes: number;
+  demoFareKes: number | null;
   frequencyMinutes: number;
   co2SavedKg: number;
   stops: TransitStop[];
   waypoints: [number, number][];
   tag?: 'Fastest' | 'Pure Electric' | 'Cheapest' | 'Express';
   nextDepartures: string[]; // e.g. ["2 min", "8 min", "15 min"]
+  transfersCount?: number;
+  transferInfo?: RouteTransferInfo;
 }
+
+export type RouteSortMode = 'recommended' | 'fastest' | 'cheapest' | 'transfers';
+
+export type JourneyStepType =
+  | 'origin'
+  | 'board'
+  | 'intermediate'
+  | 'transfer'
+  | 'alight'
+  | 'destination';
+
+export interface JourneyDirectionStep {
+  stepNumber: number;
+  type: JourneyStepType;
+  title: string;
+  instruction: string;
+  stop?: TransitStop;
+  saccoName?: string;
+  routeCode?: string;
+  transferInfo?: RouteTransferInfo;
+}
+
+export type TripStatus = 'Planned' | 'In progress' | 'Completed' | 'Cancelled';
 
 export interface PastTrip {
   id: string;
   origin: string;
+  originLat: number;
+  originLng: number;
+  originStopId?: string;
   destination: string;
+  destinationLat: number;
+  destinationLng: number;
+  destinationStopId?: string;
+  routeId: string;
+  routeCode: string;
+  routeName?: string;
   saccoId: string;
   saccoName: string;
-  routeCode: string;
+  timestamp: string; // ISO 8601 date string
   date: string;
   time: string;
-  fareKes: number;
-  mpesaRef: string;
+  fareKes: number | null;
+  mpesaRef?: string;
   isElectric: boolean;
-  durationMinutes: number;
-  status: 'Completed' | 'Refunded';
+  durationMinutes: number | null;
+  status: TripStatus;
+  isPrototypeAction?: boolean;
+}
+
+export type TripRecord = PastTrip;
+
+export interface CommuterGuideSection {
+  id: string;
+  number: number;
+  title: string;
+  summary: string;
+  generalGuidance: string[];
+  verifyLocallyNote: string;
+  terms?: { term: string; meaning: string }[];
 }
 
 export interface SavedPlace {
@@ -131,3 +187,4 @@ export interface UserProfile {
   locationEnabled: boolean;
   accessibleOnly: boolean;
 }
+
