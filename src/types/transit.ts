@@ -38,6 +38,7 @@ export interface Vehicle {
   plate: string;
   saccoId: string;
   saccoName: string;
+  routeId: string; // Valid route ID referencing RouteOption
   routeNumber: string;
   destination: string;
   origin: string;
@@ -52,6 +53,7 @@ export interface Vehicle {
   totalSeats: number;
   demoEtaMinutes: number;
   lastPingSecondsAgo: number;
+  isGeometryAvailable?: boolean;
 }
 
 export interface RouteOption {

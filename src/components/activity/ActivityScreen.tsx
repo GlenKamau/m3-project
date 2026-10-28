@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { NairobiMap } from '../map/NairobiMap';
 import { 
   Sacco, 
@@ -18,8 +18,10 @@ import {
   TRANSIT_STOPS, 
   MOCK_VEHICLES, 
   MOCK_ROUTES, 
-  MOCK_PAST_TRIPS 
+  MOCK_PAST_TRIPS,
+  matchStopByQuery
 } from '../../data/mockData';
+import { routingService } from '../../utils/routingService';
 import { TicketModal } from '../modals/TicketModal';
 import { 
   ArrowUpDown, 
@@ -37,7 +39,8 @@ import {
   Users,
   BatteryCharging,
   ArrowRight,
-  Info
+  Info,
+  X
 } from 'lucide-react';
 
 interface ActivityScreenProps {
@@ -58,18 +61,41 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
     initialRouteId || initialDestination ? 'routes' : 'nearby'
   );
 
-  // Origin & Destination inputs
+  // Origin & Destination input strings
   const [originText, setOriginText] = useState('Kencom Terminal (CBD)');
   const [destinationText, setDestinationText] = useState(
     initialDestination || 'Westlands (Sarit/The Mall)'
   );
+
+  // Active search dropdown focus state
+  const [focusedInput, setFocusedInput] = useState<'origin' | 'destination' | null>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setFocusedInput(null);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
+
+  // Sync destination if initialDestination prop changes
+  React.useEffect(() => {
+    if (initialDestination) {
+      setDestinationText(initialDestination);
+      setSelectedRouteId(null);
+    }
+  }, [initialDestination]);
 
   // Electric filter toggle
   const [isElectricOnly, setIsElectricOnly] = useState(false);
 
   // Selected route and vehicle state
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(
-    initialRouteId || 'route-e105-westlands'
+    initialRouteId || null
   );
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
 
@@ -77,29 +103,74 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
   const [showShareNotification, setShowShareNotification] = useState(false);
 
-  // Filter routes by SACCO and Electric filter
+  // Resolve matching stops strictly without hardcoded fallback
+  const originStop = useMemo(() => {
+    return matchStopByQuery(originText) || null;
+  }, [originText]);
+
+  const destinationStop = useMemo(() => {
+    return matchStopByQuery(destinationText) || null;
+  }, [destinationText]);
+
+  // Filter transit suggestions based on the focused input text
+  const currentSuggestions = useMemo(() => {
+    const text = focusedInput === 'origin' ? originText : destinationText;
+    if (!text || !text.trim()) {
+      return TRANSIT_STOPS;
+    }
+    const q = text.toLowerCase().trim();
+    return TRANSIT_STOPS.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        s.area.toLowerCase().includes(q) ||
+        s.lines.some((l) => l.toLowerCase().includes(q))
+    );
+  }, [focusedInput, originText, destinationText]);
+
+  // Dynamically resolve suggested routes connecting originStop to destinationStop
   const filteredRoutes = useMemo(() => {
-    return MOCK_ROUTES.filter((r) => {
+    if (!originStop || !destinationStop || originStop.id === destinationStop.id) {
+      return [];
+    }
+
+    // Primary route connecting user's origin to destination via routingService
+    const primaryRoute = routingService.getRouteSync(
+      originStop,
+      destinationStop,
+      selectedSaccoId,
+      isElectricOnly
+    );
+
+    if (!primaryRoute) {
+      return [];
+    }
+
+    // Alternative routes matching SACCO or electric filter
+    const alternativeRoutes = MOCK_ROUTES.filter((r) => {
+      if (r.id === primaryRoute.id) return false;
       if (selectedSaccoId !== 'all' && r.saccoId !== selectedSaccoId) return false;
       if (isElectricOnly && !r.isElectric) return false;
       return true;
-    });
-  }, [selectedSaccoId, isElectricOnly]);
+    }).slice(0, 3);
+
+    return [primaryRoute, ...alternativeRoutes];
+  }, [originStop, destinationStop, selectedSaccoId, isElectricOnly]);
 
   const activeRoute = useMemo(() => {
-    return (
-      filteredRoutes.find((r) => r.id === selectedRouteId) ||
-      MOCK_ROUTES.find((r) => r.id === selectedRouteId) ||
-      filteredRoutes[0] ||
-      null
-    );
+    if (selectedRouteId) {
+      const found = filteredRoutes.find((r) => r.id === selectedRouteId);
+      if (found) return found;
+    }
+    return filteredRoutes[0] || null;
   }, [filteredRoutes, selectedRouteId]);
 
-  // Swap Origin and Destination
+  // Swap Origin and Destination cleanly
   const handleSwapLocations = () => {
-    const temp = originText;
-    setOriginText(destinationText);
-    setDestinationText(temp);
+    const tempOrigin = originText;
+    const tempDest = destinationText;
+    setOriginText(tempDest);
+    setDestinationText(tempOrigin);
+    setSelectedRouteId(null);
   };
 
   // Select a past trip to repeat
@@ -112,6 +183,8 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
     const matchedRoute = MOCK_ROUTES.find((r) => r.routeCode === trip.routeCode);
     if (matchedRoute) {
       setSelectedRouteId(matchedRoute.id);
+    } else {
+      setSelectedRouteId(null);
     }
   };
 
@@ -124,8 +197,11 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
 
   return (
     <div className="pb-24 pt-2 px-3 md:px-6 max-w-4xl mx-auto space-y-4">
-      {/* 1. Origin & Destination Inputs Header Card */}
-      <section className="bg-white rounded-3xl p-4 md:p-5 shadow-xs border border-[#e5e7eb]">
+      {/* 1. Origin & Destination Inputs Header Card with Autocomplete */}
+      <section 
+        ref={searchContainerRef} 
+        className="bg-white rounded-3xl p-4 md:p-5 shadow-xs border border-[#e5e7eb] relative z-30"
+      >
         <div className="flex items-center gap-3">
           {/* Timeline dots line */}
           <div className="flex flex-col items-center justify-between py-1 self-stretch">
@@ -140,19 +216,37 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
               <input
                 type="text"
                 value={originText}
-                onChange={(e) => setOriginText(e.target.value)}
-                placeholder="Pick-up station / stage"
+                onFocus={() => setFocusedInput('origin')}
+                onChange={(e) => {
+                  setOriginText(e.target.value);
+                  setSelectedRouteId(null);
+                }}
+                placeholder="Pick-up station / stage (e.g. Kencom)"
                 className="w-full bg-[#f6f8fa] text-xs md:text-sm font-semibold text-[#111827] rounded-xl px-3.5 py-2.5 outline-none focus:ring-1 focus:ring-[#0b1b3d]"
               />
+              {originStop && (
+                <span className="absolute right-3 top-2.5 text-[10px] text-emerald-700 bg-emerald-50 font-bold px-1.5 py-0.5 rounded">
+                  {originStop.area}
+                </span>
+              )}
             </div>
             <div className="relative">
               <input
                 type="text"
                 value={destinationText}
-                onChange={(e) => setDestinationText(e.target.value)}
-                placeholder="Where to? (Destination stage)"
+                onFocus={() => setFocusedInput('destination')}
+                onChange={(e) => {
+                  setDestinationText(e.target.value);
+                  setSelectedRouteId(null);
+                }}
+                placeholder="Where to? (e.g. Sarit, Yaya, Karen)"
                 className="w-full bg-[#f6f8fa] text-xs md:text-sm font-semibold text-[#111827] rounded-xl px-3.5 py-2.5 outline-none focus:ring-1 focus:ring-[#0b1b3d]"
               />
+              {destinationStop && (
+                <span className="absolute right-3 top-2.5 text-[10px] text-emerald-700 bg-emerald-50 font-bold px-1.5 py-0.5 rounded">
+                  {destinationStop.area}
+                </span>
+              )}
             </div>
           </div>
 
@@ -160,22 +254,69 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
           <button
             onClick={handleSwapLocations}
             aria-label="Swap starting-point and destination"
-            className="w-10 h-10 rounded-2xl bg-[#f6f8fa] hover:bg-slate-200 active:scale-95 text-[#0b1b3d] flex items-center justify-center transition border border-slate-200/60"
+            className="w-10 h-10 rounded-2xl bg-[#f6f8fa] hover:bg-slate-200 active:scale-95 text-[#0b1b3d] flex items-center justify-center transition border border-slate-200/60 shrink-0"
             title="Swap Origin and Destination"
           >
             <ArrowUpDown className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Quick Stop Presets */}
+        {/* Autocomplete Suggestions Dropdown */}
+        {focusedInput && (
+          <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden max-h-60 overflow-y-auto z-50 animate-in fade-in slide-in-from-top-1">
+            <div className="p-2 border-b border-slate-100 flex items-center justify-between text-xs text-slate-400 font-semibold px-3">
+              <span>Select {focusedInput === 'origin' ? 'Origin Stage' : 'Destination'}</span>
+              <button 
+                onClick={() => setFocusedInput(null)} 
+                className="text-slate-400 hover:text-slate-600 p-0.5"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            {currentSuggestions.length > 0 ? (
+              currentSuggestions.map((stop) => (
+                <button
+                  key={stop.id}
+                  onClick={() => {
+                    if (focusedInput === 'origin') {
+                      setOriginText(stop.name);
+                    } else {
+                      setDestinationText(stop.name);
+                    }
+                    setSelectedRouteId(null);
+                    setFocusedInput(null);
+                  }}
+                  className="w-full text-left px-3.5 py-2.5 hover:bg-slate-50 transition flex items-center justify-between border-b border-slate-50 last:border-0"
+                >
+                  <div>
+                    <div className="text-xs md:text-sm font-bold text-slate-900">{stop.name}</div>
+                    <div className="text-[11px] text-slate-500">{stop.area} • {stop.lines.join(', ')}</div>
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-mono">
+                    [{stop.lat.toFixed(4)}, {stop.lng.toFixed(4)}]
+                  </div>
+                </button>
+              ))
+            ) : (
+              <div className="p-4 text-center text-xs text-slate-400">
+                No matching stages found. Try searching Kencom, Sarit, Yaya, or Karen.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Quick Stage Presets */}
         <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2 overflow-x-auto no-scrollbar text-xs">
           <span className="text-[11px] text-slate-400 uppercase font-bold shrink-0">
             Stages:
           </span>
-          {TRANSIT_STOPS.slice(0, 5).map((stop) => (
+          {TRANSIT_STOPS.slice(0, 7).map((stop) => (
             <button
               key={stop.id}
-              onClick={() => setDestinationText(stop.name)}
+              onClick={() => {
+                setDestinationText(stop.name);
+                setSelectedRouteId(null);
+              }}
               className="shrink-0 px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition"
             >
               {stop.name.split(' ')[0]}
@@ -183,6 +324,25 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
           ))}
         </div>
       </section>
+
+      {/* Unrecognized Location or Unavailable Route Alert Banner */}
+      {(!originStop || !destinationStop || originStop.id === destinationStop.id) && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 flex items-start gap-2.5 text-xs text-amber-900">
+          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <span className="font-bold">
+              {!originStop
+                ? `Unrecognized origin stage: "${originText}".`
+                : !destinationStop
+                ? `Unrecognized destination stage: "${destinationText}".`
+                : 'Origin and Destination are the same stage.'}
+            </span>
+            <div className="mt-1 text-[11px] text-amber-800">
+              Please select a verified Nairobi stage (such as Kencom, Sarit Centre, Yaya Centre, Karen, or JKIA) to display a road-following transit route.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 2. SACCO Filter Pills */}
       <section className="space-y-2">
@@ -233,6 +393,8 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
           stops={TRANSIT_STOPS}
           selectedRoute={subTab === 'routes' ? activeRoute : null}
           selectedVehicle={selectedVehicle}
+          originStop={originStop}
+          destinationStop={destinationStop}
           onSelectVehicle={(v) => {
             setSelectedVehicle(v);
           }}
@@ -371,8 +533,8 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedVehicle(bus);
-                        // Find matching route or use default
-                        const matchedRoute = MOCK_ROUTES.find((r) => r.routeCode === bus.routeNumber) || MOCK_ROUTES[0];
+                        // Find matching route by bus.routeId
+                        const matchedRoute = MOCK_ROUTES.find((r) => r.id === bus.routeId) || MOCK_ROUTES.find((r) => r.routeCode === bus.routeNumber) || MOCK_ROUTES[0];
                         setSelectedRouteId(matchedRoute.id);
                         setIsTicketModalOpen(true);
                       }}
@@ -391,13 +553,44 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
       {/* SUB-VIEW 2: Suggested Routes */}
       {subTab === 'routes' && (
         <section className="space-y-4">
-          <div className="space-y-3">
+          {filteredRoutes.length === 0 ? (
+            <div className="bg-white rounded-3xl p-6 border border-slate-200 text-center space-y-4 shadow-xs">
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-[#111827] text-base">Route Unavailable</h3>
+                <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+                  No road-following transit corridor available between &quot;{originText}&quot; and &quot;{destinationText}&quot;. Please choose from verified Nairobi transit stages below:
+                </p>
+              </div>
+              <div className="flex flex-wrap justify-center gap-1.5 pt-1">
+                {TRANSIT_STOPS.map((st) => (
+                  <button
+                    key={st.id}
+                    onClick={() => {
+                      setDestinationText(st.name);
+                      setSelectedRouteId(null);
+                    }}
+                    className="px-3 py-1.5 text-xs rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition"
+                  >
+                    {st.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
             {filteredRoutes.map((route) => {
               const isSelected = activeRoute?.id === route.id;
               return (
                 <div
                   key={route.id}
-                  onClick={() => setSelectedRouteId(route.id)}
+                  onClick={() => {
+                    setSelectedRouteId(route.id);
+                    setOriginText(route.fromStop.name);
+                    setDestinationText(route.toStop.name);
+                  }}
                   className={`bg-white rounded-3xl p-4 md:p-5 border transition-all cursor-pointer ${
                     isSelected
                       ? 'border-[#0b1b3d] shadow-md ring-2 ring-slate-200'
@@ -464,6 +657,7 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
               );
             })}
           </div>
+          )}
 
           {/* Detailed Selected Route Sheet */}
           {activeRoute && (

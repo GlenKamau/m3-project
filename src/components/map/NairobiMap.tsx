@@ -32,6 +32,8 @@ interface NairobiMapProps {
   stops: TransitStop[];
   selectedRoute: RouteOption | null;
   selectedVehicle: Vehicle | null;
+  originStop?: TransitStop | null;
+  destinationStop?: TransitStop | null;
   onSelectVehicle?: (vehicle: Vehicle) => void;
   onSelectStop?: (stop: TransitStop) => void;
   filterSaccoId?: string;
@@ -45,6 +47,8 @@ export const NairobiMap: React.FC<NairobiMapProps> = ({
   stops,
   selectedRoute,
   selectedVehicle,
+  originStop,
+  destinationStop,
   onSelectVehicle,
   onSelectStop,
   filterSaccoId = 'all',
@@ -60,6 +64,7 @@ export const NairobiMap: React.FC<NairobiMapProps> = ({
   const routePolylineRef = useRef<L.Polyline | null>(null);
   const originMarkerRef = useRef<L.Marker | null>(null);
   const destinationMarkerRef = useRef<L.Marker | null>(null);
+  const intermediateMarkersRef = useRef<L.Marker[]>([]);
 
   // Animation simulation state
   const simulationStatesRef = useRef<Map<string, AnimatedVehicleState>>(new Map());
@@ -331,59 +336,128 @@ export const NairobiMap: React.FC<NairobiMapProps> = ({
       destinationMarkerRef.current.remove();
       destinationMarkerRef.current = null;
     }
+    intermediateMarkersRef.current.forEach((marker) => marker.remove());
+    intermediateMarkersRef.current = [];
 
-    if (!selectedRoute) return;
+    if (!selectedRoute && !originStop && !destinationStop) return;
+
+    const boundsPoints: [number, number][] = [];
 
     // Draw main route polyline
-    const polyline = L.polyline(selectedRoute.waypoints, {
-      color: selectedRoute.isElectric ? '#00e575' : '#0b1b3d',
-      weight: 6,
-      opacity: 0.9,
-      lineCap: 'round',
-      lineJoin: 'round',
-    }).addTo(map);
+    if (selectedRoute && selectedRoute.waypoints.length >= 2) {
+      const polyline = L.polyline(selectedRoute.waypoints, {
+        color: selectedRoute.isElectric ? '#00e575' : '#0b1b3d',
+        weight: 6,
+        opacity: 0.95,
+        lineCap: 'round',
+        lineJoin: 'round',
+      }).addTo(map);
 
-    routePolylineRef.current = polyline;
+      routePolylineRef.current = polyline;
+      boundsPoints.push(...selectedRoute.waypoints);
 
-    // Create Origin Pin
-    const originCoords = selectedRoute.waypoints[0];
-    const originIcon = L.divIcon({
-      html: `
-        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#0b1b3d] text-white text-[11px] font-bold shadow-lg border border-white whitespace-nowrap" style="transform: translate(-50%, -100%);">
-          <span class="w-2 h-2 rounded-full bg-white"></span>
-          <span>START: ${selectedRoute.fromStop.name.split(' ')[0]}</span>
-        </div>
-      `,
-      className: 'route-origin-pin',
-      iconSize: [0, 0],
-    });
-    originMarkerRef.current = L.marker(originCoords, { icon: originIcon }).addTo(map);
+      // Render intermediate stop dots along the route polyline if present
+      if (selectedRoute.stops && selectedRoute.stops.length > 2) {
+        const intermediateStops = selectedRoute.stops.slice(1, -1);
+        intermediateStops.forEach((interStop) => {
+          const interIcon = L.divIcon({
+            html: `
+              <div class="cursor-pointer group flex items-center justify-center" style="transform: translate(-50%, -50%);">
+                <div class="w-3 h-3 rounded-full bg-white border-2 border-[#0b1b3d] shadow-sm flex items-center justify-center ring-2 ring-slate-100 group-hover:scale-125">
+                  <div class="w-1 h-1 rounded-full bg-[#00e575]"></div>
+                </div>
+                <div class="absolute -bottom-4 whitespace-nowrap bg-[#0b1b3d]/90 text-[9px] font-bold text-white px-1 py-0.2 rounded shadow opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                  ${interStop.name.split(' ')[0]}
+                </div>
+              </div>
+            `,
+            className: 'route-intermediate-pin',
+            iconSize: [0, 0],
+          });
+          const interMarker = L.marker([interStop.lat, interStop.lng], {
+            icon: interIcon,
+            zIndexOffset: 100,
+          }).addTo(map);
 
-    // Create Destination Pin
-    const destCoords = selectedRoute.waypoints[selectedRoute.waypoints.length - 1];
-    const destIcon = L.divIcon({
-      html: `
-        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#00e575] text-[#0b1b3d] text-[11px] font-extrabold shadow-lg border border-[#0b1b3d] whitespace-nowrap" style="transform: translate(-50%, -100%);">
-          <span class="w-2 h-2 rounded-full bg-[#0b1b3d]"></span>
-          <span>DEST: ${selectedRoute.toStop.name.split(' ')[0]}</span>
-        </div>
-      `,
-      className: 'route-dest-pin',
-      iconSize: [0, 0],
-    });
-    destinationMarkerRef.current = L.marker(destCoords, { icon: destIcon }).addTo(map);
+          interMarker.bindPopup(
+            `<div class="text-xs">
+              <span class="text-[10px] text-slate-400 font-bold uppercase block">Intermediate Stage</span>
+              <strong class="text-slate-900">${interStop.name}</strong>
+              <div class="text-slate-500 text-[11px]">${interStop.area}</div>
+            </div>`
+          );
 
-    // Fit map bounds to show complete journey
-    try {
-      map.fitBounds(polyline.getBounds(), {
-        padding: [60, 60],
-        maxZoom: 15,
-        animate: true,
-      });
-    } catch {
-      // ignore boundary errors if any
+          intermediateMarkersRef.current.push(interMarker);
+        });
+      }
     }
-  }, [selectedRoute]);
+
+    // Create Origin Pin (Midnight Navy #0b1b3d with START badge)
+    const originCoords: [number, number] | null = originStop
+      ? [originStop.lat, originStop.lng]
+      : selectedRoute
+      ? selectedRoute.waypoints[0]
+      : null;
+
+    if (originCoords) {
+      const originName = originStop ? originStop.name : selectedRoute?.fromStop.name || 'Origin';
+      const originIcon = L.divIcon({
+        html: `
+          <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#0b1b3d] text-white text-[11px] font-bold shadow-xl border-2 border-white whitespace-nowrap z-50 cursor-pointer" style="transform: translate(-50%, -100%);">
+            <span class="w-2 h-2 rounded-full bg-white"></span>
+            <span>START: ${originName.split(' ')[0]}</span>
+          </div>
+        `,
+        className: 'route-origin-pin',
+        iconSize: [0, 0],
+      });
+      originMarkerRef.current = L.marker(originCoords, { 
+        icon: originIcon,
+        zIndexOffset: 500,
+      }).addTo(map);
+      boundsPoints.push(originCoords);
+    }
+
+    // Create Destination Pin (Electric Mint #00e575 with DEST badge)
+    const destCoords: [number, number] | null = destinationStop
+      ? [destinationStop.lat, destinationStop.lng]
+      : selectedRoute
+      ? selectedRoute.waypoints[selectedRoute.waypoints.length - 1]
+      : null;
+
+    if (destCoords) {
+      const destName = destinationStop ? destinationStop.name : selectedRoute?.toStop.name || 'Destination';
+      const destIcon = L.divIcon({
+        html: `
+          <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#00e575] text-[#0b1b3d] text-[11px] font-extrabold shadow-xl border-2 border-[#0b1b3d] whitespace-nowrap z-50 cursor-pointer" style="transform: translate(-50%, -100%);">
+            <span class="w-2 h-2 rounded-full bg-[#0b1b3d]"></span>
+            <span>DEST: ${destName.split(' ')[0]}</span>
+          </div>
+        `,
+        className: 'route-dest-pin',
+        iconSize: [0, 0],
+      });
+      destinationMarkerRef.current = L.marker(destCoords, { 
+        icon: destIcon,
+        zIndexOffset: 500,
+      }).addTo(map);
+      boundsPoints.push(destCoords);
+    }
+
+    // Fit map bounds to show complete journey without overzooming
+    if (boundsPoints.length >= 2) {
+      try {
+        const bounds = L.latLngBounds(boundsPoints);
+        map.fitBounds(bounds, {
+          padding: [55, 55],
+          maxZoom: 15,
+          animate: true,
+        });
+      } catch {
+        // ignore boundary error
+      }
+    }
+  }, [selectedRoute, originStop, destinationStop]);
 
   // Center on selected vehicle if changed
   useEffect(() => {

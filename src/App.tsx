@@ -22,9 +22,7 @@ export default function App() {
     if (destinationQuery) {
       setActiveDestination(destinationQuery);
     }
-    if (selectedRouteId) {
-      setActiveRouteId(selectedRouteId);
-    }
+    setActiveRouteId(selectedRouteId);
     setCurrentTab('activity');
   };
 

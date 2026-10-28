@@ -273,167 +273,96 @@ export const TRANSIT_STOPS: TransitStop[] = [
   },
 ];
 
-export const MOCK_VEHICLES: Vehicle[] = [
-  {
-    id: 'v-01',
-    plate: 'KDG 812B',
-    saccoId: 'basigo',
-    saccoName: 'BasiGo Electric',
-    routeNumber: 'E-105',
-    destination: 'Westlands (Sarit)',
-    origin: 'Kencom CBD',
-    lat: -1.2785,
-    lng: 36.8182,
-    heading: 320,
-    speed: 38,
-    isElectric: true,
-    batteryPct: 88,
-    occupancy: 'low',
-    seatsAvailable: 14,
-    totalSeats: 33,
-    demoEtaMinutes: 3,
-    lastPingSecondsAgo: 4,
-  },
-  {
-    id: 'v-02',
-    plate: 'KDF 399M',
-    saccoId: 'super-metro',
-    saccoName: 'Super Metro',
-    routeNumber: 'SM-105',
-    destination: 'Uthiru Stage',
-    origin: 'Kencom CBD',
-    lat: -1.2692,
-    lng: 36.8095,
-    heading: 305,
-    speed: 42,
-    isElectric: true,
-    batteryPct: 76,
-    occupancy: 'medium',
-    seatsAvailable: 7,
-    totalSeats: 33,
-    demoEtaMinutes: 6,
-    lastPingSecondsAgo: 8,
-  },
-  {
-    id: 'v-03',
-    plate: 'KDC 551X',
-    saccoId: 'city-hoppa',
-    saccoName: 'City Hoppa',
-    routeNumber: 'CH-111',
-    destination: 'Karen Shopping Centre',
-    origin: 'Ambassadeur CBD',
-    lat: -1.2942,
-    lng: 36.8021,
-    heading: 240,
-    speed: 28,
-    isElectric: false,
-    occupancy: 'high',
-    seatsAvailable: 3,
-    totalSeats: 46,
-    demoEtaMinutes: 8,
-    lastPingSecondsAgo: 12,
-  },
-  {
-    id: 'v-04',
-    plate: 'KDJ 104E',
-    saccoId: 'basigo',
-    saccoName: 'BasiGo Electric',
-    routeNumber: 'BG-Airport',
-    destination: 'JKIA Airport Terminals',
-    origin: 'Railways CBD',
-    lat: -1.3090,
-    lng: 36.8650,
-    heading: 135,
-    speed: 62,
-    isElectric: true,
-    batteryPct: 91,
-    occupancy: 'low',
-    seatsAvailable: 18,
-    totalSeats: 33,
-    demoEtaMinutes: 12,
-    lastPingSecondsAgo: 3,
-  },
-  {
-    id: 'v-05',
-    plate: 'KDE 762T',
-    saccoId: 'super-metro',
-    saccoName: 'Super Metro',
-    routeNumber: 'SM-44',
-    destination: 'Kasarani Sports View',
-    origin: 'Odeon CBD',
-    lat: -1.2480,
-    lng: 36.8620,
-    heading: 45,
-    speed: 55,
-    isElectric: true,
-    batteryPct: 64,
-    occupancy: 'medium',
-    seatsAvailable: 9,
-    totalSeats: 33,
-    demoEtaMinutes: 5,
-    lastPingSecondsAgo: 6,
-  },
-  {
-    id: 'v-06',
-    plate: 'KDD 408Z',
-    saccoId: 'lopha',
-    saccoName: 'Lopha Travels',
-    routeNumber: 'LT-237',
-    destination: 'Roysambu Roundabout',
-    origin: 'Odeon CBD',
-    lat: -1.2610,
-    lng: 36.8480,
-    heading: 50,
-    speed: 48,
-    isElectric: false,
-    occupancy: 'high',
-    seatsAvailable: 2,
-    totalSeats: 33,
-    demoEtaMinutes: 9,
-    lastPingSecondsAgo: 15,
-  },
-  {
-    id: 'v-07',
-    plate: 'KDA 930H',
-    saccoId: 'metro-trans',
-    saccoName: 'Metro Trans',
-    routeNumber: 'MT-46',
-    destination: 'Westlands (The Mall)',
-    origin: 'Kencom CBD',
-    lat: -1.2715,
-    lng: 36.8110,
-    heading: 310,
-    speed: 34,
-    isElectric: true,
-    batteryPct: 82,
-    occupancy: 'low',
-    seatsAvailable: 15,
-    totalSeats: 33,
-    demoEtaMinutes: 4,
-    lastPingSecondsAgo: 5,
-  },
-  {
-    id: 'v-08',
-    plate: 'KCG 611Y',
-    saccoId: 'kbs',
-    saccoName: 'Kenya Bus Service',
-    routeNumber: 'KBS-12',
-    destination: 'Upper Hill Financial',
-    origin: 'Ambassadeur CBD',
-    lat: -1.2915,
-    lng: 36.8210,
-    heading: 215,
-    speed: 25,
-    isElectric: false,
-    occupancy: 'full',
-    seatsAvailable: 0,
-    totalSeats: 52,
-    demoEtaMinutes: 11,
-    lastPingSecondsAgo: 18,
-  },
-];
+// Dense, road-following coordinate polylines for Nairobi's major arterial transit corridors
+export const CORRIDOR_WAYPOINTS = {
+  // Waiyaki Way Corridor (CBD Kencom <-> Westlands <-> Uthiru)
+  waiyakiWay: [
+    [-1.2844, 36.8249], // Kencom Terminal
+    [-1.2831, 36.8228], // Moi Ave / City Hall Way
+    [-1.2810, 36.8188], // University Way roundabout
+    [-1.2785, 36.8164], // Uhuru Highway
+    [-1.2758, 36.8150], // Approaching Museum Hill
+    [-1.2742, 36.8142], // Museum Hill flyover
+    [-1.2720, 36.8130], // Chiromo curve
+    [-1.2690, 36.8100], // Chiromo Bypass
+    [-1.2670, 36.8075], // Kempinski curve
+    [-1.2655, 36.8048], // Westlands Stage (Sarit/The Mall)
+    [-1.2635, 36.7970], // ABC Place
+    [-1.2618, 36.7860], // Waiyaki Way expressway curve
+    [-1.2605, 36.7720], // Kangemi flyover
+    [-1.2595, 36.7550], // Mountain View
+    [-1.2585, 36.7320], // Uthiru Stage
+  ] as [number, number][],
+
+  // Thika Superhighway Corridor (CBD Odeon <-> Pangani <-> Roysambu <-> Kasarani)
+  thikaHighway: [
+    [-1.2818, 36.8252], // Odeon Cinema
+    [-1.2798, 36.8270], // Tom Mboya / Koja roundabout
+    [-1.2765, 36.8315], // Ngara roundabout
+    [-1.2738, 36.8350], // Murang'a Rd curve
+    [-1.2720, 36.8375], // Pangani Interchange
+    [-1.2660, 36.8450], // Muthaiga Interchange
+    [-1.2580, 36.8520], // Guru Nanak
+    [-1.2510, 36.8590], // Survey of Kenya curve
+    [-1.2420, 36.8680], // Allsopps / Ruaraka
+    [-1.2350, 36.8745], // Garden City Mall
+    [-1.2265, 36.8810], // Mountain Mall
+    [-1.2185, 36.8876], // Roysambu Roundabout (TRM)
+    [-1.2215, 36.8920], // Kasarani turnoff
+    [-1.2260, 36.8970], // Kasarani Sports View
+  ] as [number, number][],
+
+  // Ngong Road - Karen Corridor (CBD Ambassadeur <-> Upper Hill <-> Yaya <-> Karen)
+  ngongRoad: [
+    [-1.2868, 36.8272], // Ambassadeur / Moi Ave
+    [-1.2905, 36.8250], // Haile Selassie Ave curve
+    [-1.2935, 36.8210], // Railway roundabout
+    [-1.2970, 36.8175], // Community flyover
+    [-1.2982, 36.8155], // Upper Hill (Britam / Hospital Rd)
+    [-1.2995, 36.8100], // Kenyatta National Hospital roundabout
+    [-1.2975, 36.8040], // City Mortuary roundabout
+    [-1.2955, 36.7970], // Daystar curve
+    [-1.2935, 36.7920], // Hurlingham curve
+    [-1.2925, 36.7876], // Yaya Centre link
+    [-1.2950, 36.7790], // Adams Arcade
+    [-1.2970, 36.7700], // Impala Club curve
+    [-1.2988, 36.7622], // The Junction Mall
+    [-1.3025, 36.7520], // Dagoretti Corner
+    [-1.3080, 36.7410], // Lenana curve
+    [-1.3140, 36.7260], // Karen Triangle
+    [-1.3195, 36.7067], // Karen Shopping Centre
+  ] as [number, number][],
+
+  // Mombasa Road / Expressway (CBD Railways <-> JKIA Airport)
+  mombasaRoad: [
+    [-1.2912, 36.8285], // Railways Central
+    [-1.2950, 36.8310], // Workshop Rd
+    [-1.2990, 36.8325], // Bunyala roundabout
+    [-1.3030, 36.8335], // Nyayo Stadium flyover
+    [-1.3075, 36.8385], // Lusaka Rd interchange
+    [-1.3125, 36.8480], // South C / Bellevue
+    [-1.3180, 36.8580], // Sameer Business Park
+    [-1.3210, 36.8620], // Panari Hotel
+    [-1.3255, 36.8740], // General Motors
+    [-1.3310, 36.8930], // City Cabanas interchange
+    [-1.3340, 36.9060], // Airport North Rd
+    [-1.3345, 36.9180], // JKIA Entry
+    [-1.3323, 36.9275], // JKIA Terminals 1 & 2
+  ] as [number, number][],
+
+  // Upper Hill / Langata Loop (Ambassadeur <-> Upper Hill <-> South C)
+  upperHillLoop: [
+    [-1.2868, 36.8272], // Ambassadeur
+    [-1.2912, 36.8285], // Railways
+    [-1.2950, 36.8210], // Haile Selassie
+    [-1.2982, 36.8155], // Upper Hill (Britam)
+    [-1.3050, 36.8100], // Mbagathi Way link
+    [-1.3150, 36.8050], // South C / Langata
+  ] as [number, number][],
+};
 
 export const MOCK_ROUTES: RouteOption[] = [
+  // 1. Kencom to Westlands (Waiyaki Way Green Line)
   {
     id: 'route-e105-westlands',
     name: 'Waiyaki Way Green Line',
@@ -455,15 +384,35 @@ export const MOCK_ROUTES: RouteOption[] = [
       TRANSIT_STOPS[5], // Museum Hill
       TRANSIT_STOPS[4], // Westlands
     ],
-    waypoints: [
-      [-1.2844, 36.8249],
-      [-1.2820, 36.8210],
-      [-1.2775, 36.8160],
-      [-1.2742, 36.8142],
-      [-1.2700, 36.8105],
-      [-1.2655, 36.8048],
-    ],
+    waypoints: CORRIDOR_WAYPOINTS.waiyakiWay.slice(0, 10),
   },
+
+  // 2. Westlands to Kencom (Reverse Green Line)
+  {
+    id: 'route-e105-kencom',
+    name: 'Waiyaki Way Green Line (CBD Bound)',
+    routeCode: 'E-105-REV',
+    saccoId: 'basigo',
+    saccoName: 'BasiGo Electric',
+    isElectric: true,
+    fromStop: TRANSIT_STOPS[4], // Westlands
+    toStop: TRANSIT_STOPS[0], // Kencom
+    durationMinutes: 15,
+    walkMinutes: 2,
+    demoFareKes: 70,
+    frequencyMinutes: 4,
+    co2SavedKg: 1.4,
+    tag: 'Pure Electric',
+    nextDepartures: ['3 min', '7 min', '14 min'],
+    stops: [
+      TRANSIT_STOPS[4], // Westlands
+      TRANSIT_STOPS[5], // Museum Hill
+      TRANSIT_STOPS[0], // Kencom
+    ],
+    waypoints: [...CORRIDOR_WAYPOINTS.waiyakiWay.slice(0, 10)].reverse(),
+  },
+
+  // 3. Super Metro Waiyaki Express
   {
     id: 'route-sm105-westlands',
     name: 'Super Metro Waiyaki Express',
@@ -485,14 +434,10 @@ export const MOCK_ROUTES: RouteOption[] = [
       TRANSIT_STOPS[5],
       TRANSIT_STOPS[4],
     ],
-    waypoints: [
-      [-1.2844, 36.8249],
-      [-1.2810, 36.8215],
-      [-1.2742, 36.8142],
-      [-1.2680, 36.8080],
-      [-1.2655, 36.8048],
-    ],
+    waypoints: CORRIDOR_WAYPOINTS.waiyakiWay.slice(0, 10),
   },
+
+  // 4. Thika Superhighway Rapid (CBD Odeon to Kasarani)
   {
     id: 'route-sm44-thika',
     name: 'Thika Superhighway Rapid',
@@ -515,16 +460,36 @@ export const MOCK_ROUTES: RouteOption[] = [
       TRANSIT_STOPS[12], // Roysambu
       TRANSIT_STOPS[13], // Kasarani
     ],
-    waypoints: [
-      [-1.2818, 36.8252],
-      [-1.2770, 36.8310],
-      [-1.2720, 36.8375],
-      [-1.2550, 36.8550],
-      [-1.2380, 36.8720],
-      [-1.2185, 36.8876],
-      [-1.2260, 36.8970],
-    ],
+    waypoints: CORRIDOR_WAYPOINTS.thikaHighway,
   },
+
+  // 5. Kasarani/Roysambu to CBD (Reverse Thika)
+  {
+    id: 'route-sm44-odeon',
+    name: 'Thika Superhighway Rapid (CBD Bound)',
+    routeCode: 'SM-44-REV',
+    saccoId: 'super-metro',
+    saccoName: 'Super Metro',
+    isElectric: true,
+    fromStop: TRANSIT_STOPS[13], // Kasarani
+    toStop: TRANSIT_STOPS[2], // Odeon
+    durationMinutes: 25,
+    walkMinutes: 3,
+    demoFareKes: 80,
+    frequencyMinutes: 5,
+    co2SavedKg: 2.1,
+    tag: 'Fastest',
+    nextDepartures: ['2 min', '8 min', '14 min'],
+    stops: [
+      TRANSIT_STOPS[13],
+      TRANSIT_STOPS[12],
+      TRANSIT_STOPS[11],
+      TRANSIT_STOPS[2],
+    ],
+    waypoints: [...CORRIDOR_WAYPOINTS.thikaHighway].reverse(),
+  },
+
+  // 6. Ngong Road - Karen Corridor (CBD Ambassadeur to Karen)
   {
     id: 'route-ch111-karen',
     name: 'Ngong Road - Karen Corridor',
@@ -548,17 +513,37 @@ export const MOCK_ROUTES: RouteOption[] = [
       TRANSIT_STOPS[9], // Junction
       TRANSIT_STOPS[10], // Karen
     ],
-    waypoints: [
-      [-1.2868, 36.8272],
-      [-1.2940, 36.8210],
-      [-1.2982, 36.8155],
-      [-1.2950, 36.8000],
-      [-1.2925, 36.7876],
-      [-1.2988, 36.7622],
-      [-1.3100, 36.7350],
-      [-1.3195, 36.7067],
-    ],
+    waypoints: CORRIDOR_WAYPOINTS.ngongRoad,
   },
+
+  // 7. Karen to CBD (Reverse Ngong Rd)
+  {
+    id: 'route-ch111-cbd',
+    name: 'Karen - Ngong Road (CBD Bound)',
+    routeCode: 'CH-111-REV',
+    saccoId: 'city-hoppa',
+    saccoName: 'City Hoppa',
+    isElectric: false,
+    fromStop: TRANSIT_STOPS[10], // Karen
+    toStop: TRANSIT_STOPS[1], // Ambassadeur
+    durationMinutes: 36,
+    walkMinutes: 4,
+    demoFareKes: 90,
+    frequencyMinutes: 8,
+    co2SavedKg: 0.8,
+    tag: 'Cheapest',
+    nextDepartures: ['5 min', '14 min', '22 min'],
+    stops: [
+      TRANSIT_STOPS[10],
+      TRANSIT_STOPS[9],
+      TRANSIT_STOPS[8],
+      TRANSIT_STOPS[7],
+      TRANSIT_STOPS[1],
+    ],
+    waypoints: [...CORRIDOR_WAYPOINTS.ngongRoad].reverse(),
+  },
+
+  // 8. JKIA Airport Electric Shuttle (Railways to JKIA)
   {
     id: 'route-bg-airport',
     name: 'JKIA Airport Electric Shuttle',
@@ -579,14 +564,34 @@ export const MOCK_ROUTES: RouteOption[] = [
       TRANSIT_STOPS[3], // Railways
       TRANSIT_STOPS[14], // JKIA
     ],
-    waypoints: [
-      [-1.2912, 36.8285],
-      [-1.3020, 36.8450],
-      [-1.3150, 36.8750],
-      [-1.3280, 36.9100],
-      [-1.3323, 36.9275],
-    ],
+    waypoints: CORRIDOR_WAYPOINTS.mombasaRoad,
   },
+
+  // 9. JKIA to CBD (Reverse Airport)
+  {
+    id: 'route-bg-airport-cbd',
+    name: 'JKIA Airport Electric Shuttle (CBD Bound)',
+    routeCode: 'BG-Airport-REV',
+    saccoId: 'basigo',
+    saccoName: 'BasiGo Electric',
+    isElectric: true,
+    fromStop: TRANSIT_STOPS[14], // JKIA
+    toStop: TRANSIT_STOPS[3], // Railways
+    durationMinutes: 24,
+    walkMinutes: 2,
+    demoFareKes: 150,
+    frequencyMinutes: 15,
+    co2SavedKg: 3.5,
+    tag: 'Express',
+    nextDepartures: ['10 min', '25 min', '40 min'],
+    stops: [
+      TRANSIT_STOPS[14],
+      TRANSIT_STOPS[3],
+    ],
+    waypoints: [...CORRIDOR_WAYPOINTS.mombasaRoad].reverse(),
+  },
+
+  // 10. Lopha Travels Thika Shuttle
   {
     id: 'route-lt237-roysambu',
     name: 'Thika Rd High Frequency Shuttle',
@@ -608,12 +613,234 @@ export const MOCK_ROUTES: RouteOption[] = [
       TRANSIT_STOPS[11],
       TRANSIT_STOPS[12],
     ],
-    waypoints: [
-      [-1.2818, 36.8252],
-      [-1.2720, 36.8375],
-      [-1.2450, 36.8650],
-      [-1.2185, 36.8876],
+    waypoints: CORRIDOR_WAYPOINTS.thikaHighway.slice(0, 12),
+  },
+
+  // 11. Metro Trans Waiyaki - Uthiru
+  {
+    id: 'route-mt46-uthiru',
+    name: 'Metro Trans Waiyaki - Uthiru Line',
+    routeCode: 'MT-46',
+    saccoId: 'metro-trans',
+    saccoName: 'Metro Trans',
+    isElectric: true,
+    fromStop: TRANSIT_STOPS[0], // Kencom
+    toStop: TRANSIT_STOPS[6], // Uthiru
+    durationMinutes: 28,
+    walkMinutes: 3,
+    demoFareKes: 80,
+    frequencyMinutes: 7,
+    co2SavedKg: 1.8,
+    tag: 'Fastest',
+    nextDepartures: ['4 min', '12 min', '20 min'],
+    stops: [
+      TRANSIT_STOPS[0],
+      TRANSIT_STOPS[5],
+      TRANSIT_STOPS[4],
+      TRANSIT_STOPS[6],
     ],
+    waypoints: CORRIDOR_WAYPOINTS.waiyakiWay,
+  },
+
+  // 12. KBS South C / Upper Hill
+  {
+    id: 'route-kbs12-upperhill',
+    name: 'KBS Upper Hill - Community Express',
+    routeCode: 'KBS-12',
+    saccoId: 'kbs',
+    saccoName: 'Kenya Bus Service',
+    isElectric: false,
+    fromStop: TRANSIT_STOPS[1], // Ambassadeur
+    toStop: TRANSIT_STOPS[7], // Upper Hill
+    durationMinutes: 18,
+    walkMinutes: 3,
+    demoFareKes: 50,
+    frequencyMinutes: 10,
+    co2SavedKg: 0.6,
+    tag: 'Cheapest',
+    nextDepartures: ['6 min', '16 min', '26 min'],
+    stops: [
+      TRANSIT_STOPS[1],
+      TRANSIT_STOPS[3],
+      TRANSIT_STOPS[7],
+    ],
+    waypoints: CORRIDOR_WAYPOINTS.upperHillLoop,
+  },
+];
+
+export const MOCK_VEHICLES: Vehicle[] = [
+  {
+    id: 'v-01',
+    plate: 'KDG 812B',
+    saccoId: 'basigo',
+    saccoName: 'BasiGo Electric',
+    routeId: 'route-e105-westlands',
+    routeNumber: 'E-105',
+    destination: 'Westlands (Sarit)',
+    origin: 'Kencom CBD',
+    lat: -1.2785,
+    lng: 36.8164,
+    heading: 320,
+    speed: 38,
+    isElectric: true,
+    batteryPct: 88,
+    occupancy: 'low',
+    seatsAvailable: 14,
+    totalSeats: 33,
+    demoEtaMinutes: 3,
+    lastPingSecondsAgo: 4,
+    isGeometryAvailable: true,
+  },
+  {
+    id: 'v-02',
+    plate: 'KDF 399M',
+    saccoId: 'super-metro',
+    saccoName: 'Super Metro',
+    routeId: 'route-sm105-westlands',
+    routeNumber: 'SM-105',
+    destination: 'Uthiru Stage',
+    origin: 'Kencom CBD',
+    lat: -1.2690,
+    lng: 36.8100,
+    heading: 305,
+    speed: 42,
+    isElectric: true,
+    batteryPct: 76,
+    occupancy: 'medium',
+    seatsAvailable: 7,
+    totalSeats: 33,
+    demoEtaMinutes: 6,
+    lastPingSecondsAgo: 8,
+    isGeometryAvailable: true,
+  },
+  {
+    id: 'v-03',
+    plate: 'KDC 551X',
+    saccoId: 'city-hoppa',
+    saccoName: 'City Hoppa',
+    routeId: 'route-ch111-karen',
+    routeNumber: 'CH-111',
+    destination: 'Karen Shopping Centre',
+    origin: 'Ambassadeur CBD',
+    lat: -1.2955,
+    lng: 36.7970,
+    heading: 240,
+    speed: 28,
+    isElectric: false,
+    occupancy: 'high',
+    seatsAvailable: 3,
+    totalSeats: 46,
+    demoEtaMinutes: 8,
+    lastPingSecondsAgo: 12,
+    isGeometryAvailable: true,
+  },
+  {
+    id: 'v-04',
+    plate: 'KDJ 104E',
+    saccoId: 'basigo',
+    saccoName: 'BasiGo Electric',
+    routeId: 'route-bg-airport',
+    routeNumber: 'BG-Airport',
+    destination: 'JKIA Airport Terminals',
+    origin: 'Railways CBD',
+    lat: -1.3125,
+    lng: 36.8480,
+    heading: 135,
+    speed: 62,
+    isElectric: true,
+    batteryPct: 91,
+    occupancy: 'low',
+    seatsAvailable: 18,
+    totalSeats: 33,
+    demoEtaMinutes: 12,
+    lastPingSecondsAgo: 3,
+    isGeometryAvailable: true,
+  },
+  {
+    id: 'v-05',
+    plate: 'KDE 762T',
+    saccoId: 'super-metro',
+    saccoName: 'Super Metro',
+    routeId: 'route-sm44-thika',
+    routeNumber: 'SM-44',
+    destination: 'Kasarani Sports View',
+    origin: 'Odeon CBD',
+    lat: -1.2510,
+    lng: 36.8590,
+    heading: 45,
+    speed: 55,
+    isElectric: true,
+    batteryPct: 64,
+    occupancy: 'medium',
+    seatsAvailable: 9,
+    totalSeats: 33,
+    demoEtaMinutes: 5,
+    lastPingSecondsAgo: 6,
+    isGeometryAvailable: true,
+  },
+  {
+    id: 'v-06',
+    plate: 'KDD 408Z',
+    saccoId: 'lopha',
+    saccoName: 'Lopha Travels',
+    routeId: 'route-lt237-roysambu',
+    routeNumber: 'LT-237',
+    destination: 'Roysambu Roundabout',
+    origin: 'Odeon CBD',
+    lat: -1.2580,
+    lng: 36.8520,
+    heading: 50,
+    speed: 48,
+    isElectric: false,
+    occupancy: 'high',
+    seatsAvailable: 2,
+    totalSeats: 33,
+    demoEtaMinutes: 9,
+    lastPingSecondsAgo: 15,
+    isGeometryAvailable: true,
+  },
+  {
+    id: 'v-07',
+    plate: 'KDA 930H',
+    saccoId: 'metro-trans',
+    saccoName: 'Metro Trans',
+    routeId: 'route-mt46-uthiru',
+    routeNumber: 'MT-46',
+    destination: 'Uthiru Stage',
+    origin: 'Kencom CBD',
+    lat: -1.2635,
+    lng: 36.7970,
+    heading: 310,
+    speed: 34,
+    isElectric: true,
+    batteryPct: 82,
+    occupancy: 'low',
+    seatsAvailable: 15,
+    totalSeats: 33,
+    demoEtaMinutes: 4,
+    lastPingSecondsAgo: 5,
+    isGeometryAvailable: true,
+  },
+  {
+    id: 'v-08',
+    plate: 'KCG 611Y',
+    saccoId: 'kbs',
+    saccoName: 'Kenya Bus Service',
+    routeId: 'route-kbs12-upperhill',
+    routeNumber: 'KBS-12',
+    destination: 'Upper Hill Financial',
+    origin: 'Ambassadeur CBD',
+    lat: -1.2950,
+    lng: 36.8210,
+    heading: 215,
+    speed: 25,
+    isElectric: false,
+    occupancy: 'full',
+    seatsAvailable: 0,
+    totalSeats: 52,
+    demoEtaMinutes: 11,
+    lastPingSecondsAgo: 18,
+    isGeometryAvailable: true,
   },
 ];
 
@@ -729,3 +956,276 @@ export const INITIAL_USER_PROFILE: UserProfile = {
   locationEnabled: true,
   accessibleOnly: false,
 };
+
+/**
+ * Calculate distance between two lat/lng points in meters
+ */
+function getDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+/**
+ * Stop Matching Helper: Finds a TransitStop matching a user search query or location name.
+ * Strictly returns undefined if no match is found, preventing silent fallback to Westlands or any hardcoded default.
+ */
+export function matchStopByQuery(query: string): TransitStop | undefined {
+  if (!query || !query.trim()) return undefined;
+  const q = query.toLowerCase().trim();
+
+  // 1. Kencom Stage
+  if (q.includes('kencom') || q.includes('city hall')) {
+    return TRANSIT_STOPS.find((s) => s.id === 'stop-kencom');
+  }
+  // 2. Westlands / Sarit Centre
+  if (q.includes('sarit') || q.includes('westland') || q.includes('the mall')) {
+    return TRANSIT_STOPS.find((s) => s.id === 'stop-westlands');
+  }
+  // 3. Yaya Centre / Kilimani
+  if (q.includes('yaya') || q.includes('kilimani')) {
+    return TRANSIT_STOPS.find((s) => s.id === 'stop-yaya');
+  }
+  // 4. Karen
+  if (q.includes('karen')) {
+    return TRANSIT_STOPS.find((s) => s.id === 'stop-karen');
+  }
+  // 5. JKIA Airport
+  if (q.includes('airport') || q.includes('jkia') || q.includes('embakasi')) {
+    return TRANSIT_STOPS.find((s) => s.id === 'stop-jkia');
+  }
+  // 6. Upper Hill
+  if (q.includes('upper hill') || q.includes('britam') || q.includes('hospital rd')) {
+    return TRANSIT_STOPS.find((s) => s.id === 'stop-upperhill');
+  }
+  // 7. Junction Mall
+  if (q.includes('junction')) {
+    return TRANSIT_STOPS.find((s) => s.id === 'stop-junction');
+  }
+  // 8. Roysambu / TRM
+  if (q.includes('roysambu') || q.includes('trm')) {
+    return TRANSIT_STOPS.find((s) => s.id === 'stop-roysambu');
+  }
+  // 9. Kasarani
+  if (q.includes('kasarani') || q.includes('sports view')) {
+    return TRANSIT_STOPS.find((s) => s.id === 'stop-kasarani');
+  }
+  // 10. Uthiru / Kinoo
+  if (q.includes('uthiru') || q.includes('kinoo')) {
+    return TRANSIT_STOPS.find((s) => s.id === 'stop-uthiru');
+  }
+  // 11. Museum Hill
+  if (q.includes('museum') || q.includes('parklands')) {
+    return TRANSIT_STOPS.find((s) => s.id === 'stop-museum-hill');
+  }
+  // 12. Pangani
+  if (q.includes('pangani')) {
+    return TRANSIT_STOPS.find((s) => s.id === 'stop-pangani');
+  }
+  // 13. Railways / Haile Selassie
+  if (q.includes('railway') || q.includes('haile selassie')) {
+    return TRANSIT_STOPS.find((s) => s.id === 'stop-railways');
+  }
+  // 14. Odeon
+  if (q.includes('odeon')) {
+    return TRANSIT_STOPS.find((s) => s.id === 'stop-odeon');
+  }
+  // 15. Ambassadeur / Moi Ave
+  if (q.includes('ambassadeur') || q.includes('moi ave')) {
+    return TRANSIT_STOPS.find((s) => s.id === 'stop-ambassadeur');
+  }
+
+  // Exact ID match check
+  const idMatch = TRANSIT_STOPS.find((s) => s.id === q);
+  if (idMatch) return idMatch;
+
+  // Substring match on stop name or area
+  return TRANSIT_STOPS.find(
+    (s) => s.name.toLowerCase().includes(q) || s.area.toLowerCase().includes(q)
+  );
+}
+
+/**
+ * Route Resolver: Returns or generates a road-following route connecting two stops.
+ * Returns null if endpoints are missing or identical (triggering route-unavailable state).
+ */
+export function findOrCreateRoute(
+  fromStop: TransitStop | null | undefined,
+  toStop: TransitStop | null | undefined,
+  saccoId = 'all',
+  isElectricOnly = false
+): RouteOption | null {
+  if (!fromStop || !toStop || fromStop.id === toStop.id) {
+    return null;
+  }
+
+  // Check if a direct pre-configured route exists
+  const directMatch = MOCK_ROUTES.find(
+    (r) =>
+      r.fromStop.id === fromStop.id &&
+      r.toStop.id === toStop.id &&
+      (saccoId === 'all' || r.saccoId === saccoId) &&
+      (!isElectricOnly || r.isElectric)
+  );
+  if (directMatch) return directMatch;
+
+  // Check if a reverse route exists
+  const reverseMatch = MOCK_ROUTES.find(
+    (r) =>
+      r.fromStop.id === toStop.id &&
+      r.toStop.id === fromStop.id &&
+      (saccoId === 'all' || r.saccoId === saccoId) &&
+      (!isElectricOnly || r.isElectric)
+  );
+  if (reverseMatch) {
+    return {
+      ...reverseMatch,
+      id: `${reverseMatch.id}-dyn-rev`,
+      name: `${reverseMatch.name} (Return)`,
+      fromStop,
+      toStop,
+      stops: [...reverseMatch.stops].reverse(),
+      waypoints: [...reverseMatch.waypoints].reverse(),
+    };
+  }
+
+  // Synthesize a road-following route between the stops along known arterial transit corridors
+  let corridor = CORRIDOR_WAYPOINTS.waiyakiWay;
+  let isElectric = true;
+  let sacco = SACCOS[1]; // Super Metro
+
+  if (toStop.id === 'stop-jkia' || fromStop.id === 'stop-jkia') {
+    corridor = CORRIDOR_WAYPOINTS.mombasaRoad;
+    sacco = SACCOS[2]; // BasiGo
+  } else if (
+    toStop.id === 'stop-karen' ||
+    fromStop.id === 'stop-karen' ||
+    toStop.id === 'stop-junction' ||
+    fromStop.id === 'stop-junction' ||
+    toStop.id === 'stop-yaya' ||
+    fromStop.id === 'stop-yaya'
+  ) {
+    corridor = CORRIDOR_WAYPOINTS.ngongRoad;
+    isElectric = false;
+    sacco = SACCOS[3]; // City Hoppa
+  } else if (
+    toStop.id === 'stop-roysambu' ||
+    fromStop.id === 'stop-roysambu' ||
+    toStop.id === 'stop-kasarani' ||
+    fromStop.id === 'stop-kasarani' ||
+    toStop.id === 'stop-pangani' ||
+    fromStop.id === 'stop-pangani'
+  ) {
+    corridor = CORRIDOR_WAYPOINTS.thikaHighway;
+    sacco = SACCOS[1]; // Super Metro
+  } else if (
+    toStop.id === 'stop-upperhill' ||
+    fromStop.id === 'stop-upperhill'
+  ) {
+    corridor = CORRIDOR_WAYPOINTS.upperHillLoop;
+    sacco = SACCOS[3]; // City Hoppa
+    isElectric = false;
+  }
+
+  // Find projected nearest waypoint indices along corridor
+  let bestFromIdx = 0;
+  let bestFromDist = Infinity;
+  let bestToIdx = 0;
+  let bestToDist = Infinity;
+
+  corridor.forEach((pt, idx) => {
+    const dFrom = getDistanceMeters(pt[0], pt[1], fromStop.lat, fromStop.lng);
+    if (dFrom < bestFromDist) {
+      bestFromDist = dFrom;
+      bestFromIdx = idx;
+    }
+    const dTo = getDistanceMeters(pt[0], pt[1], toStop.lat, toStop.lng);
+    if (dTo < bestToDist) {
+      bestToDist = dTo;
+      bestToIdx = idx;
+    }
+  });
+
+  // Slice corridor according to direction of travel
+  let slicedCorridor: [number, number][];
+  if (bestFromIdx <= bestToIdx) {
+    slicedCorridor = corridor.slice(bestFromIdx, bestToIdx + 1);
+  } else {
+    slicedCorridor = corridor.slice(bestToIdx, bestFromIdx + 1).reverse();
+  }
+
+  // Construct complete road-following waypoint path starting at fromStop and ending at toStop
+  const path: [number, number][] = [[fromStop.lat, fromStop.lng]];
+  slicedCorridor.forEach((pt) => {
+    const last = path[path.length - 1];
+    if (getDistanceMeters(last[0], last[1], pt[0], pt[1]) > 50) {
+      path.push(pt);
+    }
+  });
+  const lastPt = path[path.length - 1];
+  if (getDistanceMeters(lastPt[0], lastPt[1], toStop.lat, toStop.lng) > 50) {
+    path.push([toStop.lat, toStop.lng]);
+  }
+
+  // Identify intermediate stops along this sliced path in order of travel
+  const intermediateStops: { stop: TransitStop; distFromStart: number }[] = [];
+  TRANSIT_STOPS.forEach((st) => {
+    if (st.id === fromStop.id || st.id === toStop.id) return;
+    // Check minimal distance from stop to any waypoint along path
+    let minDist = Infinity;
+    let closestWaypointIdx = 0;
+    path.forEach((wpt, wIdx) => {
+      const d = getDistanceMeters(wpt[0], wpt[1], st.lat, st.lng);
+      if (d < minDist) {
+        minDist = d;
+        closestWaypointIdx = wIdx;
+      }
+    });
+    // If within ~500m of the corridor line, consider it an intermediate stop
+    if (minDist <= 550) {
+      intermediateStops.push({ stop: st, distFromStart: closestWaypointIdx });
+    }
+  });
+
+  // Sort intermediate stops in direction of travel
+  intermediateStops.sort((a, b) => a.distFromStart - b.distFromStart);
+  const orderedStops = [fromStop, ...intermediateStops.map((item) => item.stop), toStop];
+
+  // Calculate total route distance in meters
+  let totalDistMeters = 0;
+  for (let i = 0; i < path.length - 1; i++) {
+    totalDistMeters += getDistanceMeters(path[i][0], path[i][1], path[i + 1][0], path[i + 1][1]);
+  }
+
+  const durationMinutes = Math.max(8, Math.round((totalDistMeters / 1000) * 2.2 + 4));
+  const demoFareKes = Math.min(180, Math.max(50, Math.round(((totalDistMeters / 1000) * 6) / 10) * 10));
+  const co2SavedKg = Number(((totalDistMeters / 1000) * (isElectric ? 0.16 : 0.08)).toFixed(1));
+
+  return {
+    id: `dyn-route-${fromStop.id}-${toStop.id}`,
+    name: `${fromStop.name.split(' ')[0]} ⇄ ${toStop.name.split(' ')[0]} Express`,
+    routeCode: `NRB-${fromStop.id.slice(5, 7).toUpperCase()}`,
+    saccoId: sacco.id,
+    saccoName: sacco.name,
+    isElectric,
+    fromStop,
+    toStop,
+    durationMinutes,
+    walkMinutes: 3,
+    demoFareKes,
+    frequencyMinutes: 5,
+    co2SavedKg,
+    tag: isElectric ? 'Pure Electric' : 'Fastest',
+    nextDepartures: ['3 min', '8 min', '15 min'],
+    stops: orderedStops,
+    waypoints: path,
+  };
+}
