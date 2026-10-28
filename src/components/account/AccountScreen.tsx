@@ -3,9 +3,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { UserProfile, SavedPlace } from '../../types/transit';
-import { SACCOS, MOCK_SAVED_PLACES, INITIAL_USER_PROFILE } from '../../data/mockData';
+import React, { useState, useEffect, useCallback } from 'react';
+import { UserProfile, SavedPlace, TransportPreferences } from '../../types/transit';
+import { SACCOS, INITIAL_USER_PROFILE } from '../../data/mockData';
+import { 
+  getSavedPlaces, 
+  savePlace,
+  deletePlace, 
+  getTransportPreferences,
+  saveTransportPreferences,
+  togglePreferredSacco,
+  setPrioritizePreferred,
+  STORAGE_EVENT 
+} from '../../utils/storage';
+import { SavedPlaceModal } from '../modals/SavedPlaceModal';
 import { 
   User, 
   Zap, 
@@ -23,7 +34,9 @@ import {
   ChevronRight,
   Info,
   PhoneCall,
-  Sparkles
+  Sparkles,
+  Edit2,
+  Sliders
 } from 'lucide-react';
 
 interface AccountScreenProps {
@@ -32,10 +45,10 @@ interface AccountScreenProps {
 
 export const AccountScreen: React.FC<AccountScreenProps> = ({ onUpdatePreferredSaccos }) => {
   const [profile, setProfile] = useState<UserProfile>(INITIAL_USER_PROFILE);
-  const [savedPlaces, setSavedPlaces] = useState<SavedPlace[]>(MOCK_SAVED_PLACES);
-  const [newPlaceTitle, setNewPlaceTitle] = useState('');
-  const [newPlaceAddress, setNewPlaceAddress] = useState('');
-  const [showAddPlaceModal, setShowAddPlaceModal] = useState(false);
+  const [savedPlaces, setSavedPlaces] = useState<SavedPlace[]>(() => getSavedPlaces());
+  const [transportPrefs, setTransportPrefs] = useState<TransportPreferences>(() => getTransportPreferences());
+  const [placeToEdit, setPlaceToEdit] = useState<SavedPlace | null>(null);
+  const [isPlaceModalOpen, setIsPlaceModalOpen] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState('500');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -45,42 +58,76 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({ onUpdatePreferredS
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleToggleSacco = (saccoId: string) => {
-    const isPreferred = profile.preferredSaccoIds.includes(saccoId);
-    const updated = isPreferred
-      ? profile.preferredSaccoIds.filter((id) => id !== saccoId)
-      : [...profile.preferredSaccoIds, saccoId];
+  const refreshStorageData = useCallback(() => {
+    setSavedPlaces(getSavedPlaces());
+    const prefs = getTransportPreferences();
+    setTransportPrefs(prefs);
+    setProfile((prev) => ({
+      ...prev,
+      preferredSaccoIds: prefs.preferredSaccoIds,
+    }));
+  }, []);
 
-    const updatedProfile = { ...profile, preferredSaccoIds: updated };
-    setProfile(updatedProfile);
+  useEffect(() => {
+    window.addEventListener(STORAGE_EVENT, refreshStorageData);
+    return () => window.removeEventListener(STORAGE_EVENT, refreshStorageData);
+  }, [refreshStorageData]);
+
+  const handleToggleSacco = (saccoId: string) => {
+    const updated = togglePreferredSacco(saccoId);
+    setTransportPrefs(updated);
+    setProfile((prev) => ({
+      ...prev,
+      preferredSaccoIds: updated.preferredSaccoIds,
+    }));
+
     if (onUpdatePreferredSaccos) {
-      onUpdatePreferredSaccos(updated);
+      onUpdatePreferredSaccos(updated.preferredSaccoIds);
     }
-    showToast(`Updated preferred SACCOs`);
+
+    const sacco = SACCOS.find((s) => s.id === saccoId);
+    const saccoName = sacco ? sacco.name : saccoId;
+    const isNowFav = updated.preferredSaccoIds.includes(saccoId);
+    showToast(isNowFav ? `Added ${saccoName} to preferred` : `Removed ${saccoName}`);
   };
 
-  const handleAddPlace = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPlaceTitle.trim() || !newPlaceAddress.trim()) return;
+  const handleTogglePrioritize = () => {
+    const nextVal = !transportPrefs.prioritizePreferred;
+    const updated = setPrioritizePreferred(nextVal);
+    setTransportPrefs(updated);
+    showToast(
+      nextVal
+        ? 'Preferred SACCOs will be prioritized on Home & Activity'
+        : 'SACCO prioritization turned off'
+    );
+  };
 
-    const newPlace: SavedPlace = {
-      id: `sp-${Date.now()}`,
-      title: newPlaceTitle.trim(),
-      address: newPlaceAddress.trim(),
-      iconName: 'map-pin',
-      lat: -1.286389,
-      lng: 36.817223,
-    };
+  const handleSelectAllSaccos = () => {
+    const allValidIds = SACCOS.filter((s) => s.id !== 'all').map((s) => s.id);
+    const updated = saveTransportPreferences({
+      ...transportPrefs,
+      preferredSaccoIds: allValidIds,
+    });
+    setTransportPrefs(updated);
+    setProfile((prev) => ({ ...prev, preferredSaccoIds: allValidIds }));
+    if (onUpdatePreferredSaccos) onUpdatePreferredSaccos(allValidIds);
+    showToast('All operators selected as preferred');
+  };
 
-    setSavedPlaces([...savedPlaces, newPlace]);
-    setNewPlaceTitle('');
-    setNewPlaceAddress('');
-    setShowAddPlaceModal(false);
-    showToast(`Saved "${newPlace.title}" to quick destinations`);
+  const handleClearAllSaccos = () => {
+    const updated = saveTransportPreferences({
+      ...transportPrefs,
+      preferredSaccoIds: [],
+    });
+    setTransportPrefs(updated);
+    setProfile((prev) => ({ ...prev, preferredSaccoIds: [] }));
+    if (onUpdatePreferredSaccos) onUpdatePreferredSaccos([]);
+    showToast('Cleared preferred operators');
   };
 
   const handleDeletePlace = (id: string) => {
-    setSavedPlaces(savedPlaces.filter((p) => p.id !== id));
+    const updated = deletePlace(id);
+    setSavedPlaces(updated);
     showToast('Destination removed');
   };
 
@@ -187,45 +234,110 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({ onUpdatePreferredS
         </div>
       </section>
 
-      {/* 3. Preferred SACCOs */}
-      <section className="bg-white rounded-3xl p-5 border border-[#e5e7eb] shadow-xs space-y-3">
+      {/* 3. Preferred SACCOs & Transit Preferences */}
+      <section className="bg-white rounded-3xl p-5 border border-[#e5e7eb] shadow-xs space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />
             <h3 className="text-sm font-bold text-[#111827]">Preferred SACCOs</h3>
           </div>
-          <span className="text-xs text-slate-500">
-            {profile.preferredSaccoIds.length} selected
-          </span>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="font-semibold text-slate-500">
+              {transportPrefs.preferredSaccoIds.length} of {SACCOS.filter((s) => s.id !== 'all').length} selected
+            </span>
+          </div>
         </div>
-        <p className="text-xs text-slate-500">
-          Prioritizes these operators in route suggestions and arrival boards:
-        </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+        {/* Prioritization Toggle Card */}
+        <div className="bg-[#f6f8fa] rounded-2xl p-3.5 border border-slate-200/80 flex items-center justify-between gap-3">
+          <div className="flex-1 pr-1">
+            <div className="flex items-center gap-1.5 font-bold text-xs text-[#0b1b3d]">
+              <Sliders className="w-3.5 h-3.5 text-[#00e575]" />
+              <span>Prioritize Preferred SACCOs</span>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+              Positions your favorite operators first on Home and Activity screens while keeping all routes accessible.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={transportPrefs.prioritizePreferred}
+            onClick={handleTogglePrioritize}
+            className={`w-11 h-6 shrink-0 rounded-full transition-colors relative focus:outline-none p-0.5 ${
+              transportPrefs.prioritizePreferred ? 'bg-[#00e575]' : 'bg-slate-300'
+            }`}
+          >
+            <span
+              className={`block w-5 h-5 rounded-full bg-white shadow-md transform transition-transform ${
+                transportPrefs.prioritizePreferred ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Quick Selection Actions */}
+        <div className="flex items-center justify-between text-[11px] pt-1 px-0.5">
+          <span className="text-slate-500">
+            Select the operators you ride most often:
+          </span>
+          <div className="flex items-center gap-2 font-semibold">
+            <button
+              type="button"
+              onClick={handleSelectAllSaccos}
+              className="text-[#0b1b3d] hover:underline"
+            >
+              Select All
+            </button>
+            <span className="text-slate-300">•</span>
+            <button
+              type="button"
+              onClick={handleClearAllSaccos}
+              className="text-slate-500 hover:text-slate-800"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+
+        {/* Operator Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {SACCOS.filter((s) => s.id !== 'all').map((sacco) => {
-            const isFav = profile.preferredSaccoIds.includes(sacco.id);
+            const isFav = transportPrefs.preferredSaccoIds.includes(sacco.id);
             return (
               <button
                 key={sacco.id}
+                type="button"
                 onClick={() => handleToggleSacco(sacco.id)}
-                className={`flex items-center justify-between p-2.5 rounded-2xl border text-xs transition text-left ${
+                className={`flex items-center justify-between p-3 rounded-2xl border text-xs transition text-left group ${
                   isFav
-                    ? 'border-[#0b1b3d] bg-slate-50 font-bold text-slate-900'
-                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    ? 'border-[#0b1b3d] bg-slate-50/80 font-bold text-slate-900 shadow-xs'
+                    : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
                 }`}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <div
-                    className={`w-2 h-2 rounded-full ${
-                      sacco.isElectric ? 'bg-[#00e575]' : 'bg-slate-400'
+                    className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                      sacco.isElectric ? 'bg-[#00e575] shadow-[0_0_6px_#00e575]' : 'bg-slate-400'
                     }`}
                   />
-                  <span>{sacco.name}</span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate">{sacco.name}</span>
+                      {sacco.isElectric && (
+                        <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded-full font-bold">
+                          ⚡
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-normal truncate mt-0.5">
+                      {sacco.corridors.slice(0, 2).join(' • ')}
+                    </div>
+                  </div>
                 </div>
                 <div
-                  className={`w-5 h-5 rounded-full flex items-center justify-center ${
-                    isFav ? 'bg-[#0b1b3d] text-white' : 'border border-slate-300'
+                  className={`w-5 h-5 rounded-full shrink-0 ml-2 flex items-center justify-center transition-all ${
+                    isFav ? 'bg-[#0b1b3d] text-white' : 'border border-slate-300 group-hover:border-slate-400'
                   }`}
                 >
                   {isFav && <Check className="w-3 h-3 text-[#00e575]" />}
@@ -244,7 +356,10 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({ onUpdatePreferredS
             <h3 className="text-sm font-bold text-[#111827]">Saved Destinations</h3>
           </div>
           <button
-            onClick={() => setShowAddPlaceModal(true)}
+            onClick={() => {
+              setPlaceToEdit(null);
+              setIsPlaceModalOpen(true);
+            }}
             className="flex items-center gap-1 text-xs font-bold text-[#0b1b3d] hover:underline"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -266,13 +381,25 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({ onUpdatePreferredS
                   {place.address}
                 </div>
               </div>
-              <button
-                onClick={() => handleDeletePlace(place.id)}
-                className="p-1.5 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
-                title="Delete Place"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => {
+                    setPlaceToEdit(place);
+                    setIsPlaceModalOpen(true);
+                  }}
+                  className="p-1.5 rounded-full text-slate-400 hover:text-[#0b1b3d] hover:bg-slate-100 transition"
+                  title="Edit Place"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => handleDeletePlace(place.id)}
+                  className="p-1.5 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                  title="Delete Place"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -420,61 +547,23 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({ onUpdatePreferredS
         </div>
       )}
 
-      {/* Add Place Modal */}
-      {showAddPlaceModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
-            <h3 className="text-base font-bold text-[#0b1b3d] font-heading">
-              Add Saved Place
-            </h3>
-            <form onSubmit={handleAddPlace} className="space-y-3">
-              <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
-                  Place Name
-                </label>
-                <input
-                  type="text"
-                  value={newPlaceTitle}
-                  onChange={(e) => setNewPlaceTitle(e.target.value)}
-                  placeholder="e.g. Gym, Parents, Church"
-                  required
-                  className="w-full bg-slate-50 border border-slate-200 text-xs rounded-xl px-3 py-2.5 outline-none focus:border-[#0b1b3d]"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
-                  Stage / Address
-                </label>
-                <input
-                  type="text"
-                  value={newPlaceAddress}
-                  onChange={(e) => setNewPlaceAddress(e.target.value)}
-                  placeholder="e.g. Valley Arcade, Lavington"
-                  required
-                  className="w-full bg-slate-50 border border-slate-200 text-xs rounded-xl px-3 py-2.5 outline-none focus:border-[#0b1b3d]"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddPlaceModal(false)}
-                  className="flex-1 py-2.5 rounded-full bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 rounded-full bg-[#0b1b3d] text-white text-xs font-bold hover:bg-slate-800 transition"
-                >
-                  Save Place
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Add / Edit Saved Place Modal */}
+      <SavedPlaceModal
+        isOpen={isPlaceModalOpen}
+        initialPlace={placeToEdit}
+        onClose={() => {
+          setIsPlaceModalOpen(false);
+          setPlaceToEdit(null);
+        }}
+        onSave={(place) => {
+          const updated = savePlace(place);
+          setSavedPlaces(updated);
+          showToast(`Saved "${place.title}"`);
+        }}
+        onDelete={(id) => {
+          handleDeletePlace(id);
+        }}
+      />
     </div>
   );
 };

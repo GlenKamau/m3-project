@@ -95,10 +95,26 @@ export interface PastTrip {
 export interface SavedPlace {
   id: string;
   title: string;
-  address: string;
+  address?: string;
   iconName: 'home' | 'briefcase' | 'plane' | 'map-pin' | 'shopping-bag';
   lat: number;
   lng: number;
+  stopId?: string;
+}
+
+export interface RecentSearch {
+  id: string;
+  destination: string;
+  lat: number;
+  lng: number;
+  timestamp: string; // ISO 8601 date string
+  stopId?: string;
+  saccoHint?: string;
+}
+
+export interface TransportPreferences {
+  preferredSaccoIds: string[];
+  prioritizePreferred: boolean;
 }
 
 export interface UserProfile {

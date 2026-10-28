@@ -11,7 +11,9 @@ import {
   TransitStop, 
   RouteOption, 
   ActivitySubTab, 
-  PastTrip 
+  PastTrip,
+  SavedPlace,
+  TransportPreferences
 } from '../../types/transit';
 import { 
   SACCOS, 
@@ -22,6 +24,7 @@ import {
   matchStopByQuery
 } from '../../data/mockData';
 import { routingService } from '../../utils/routingService';
+import { getSavedPlaces, addRecentSearch, getTransportPreferences, STORAGE_EVENT } from '../../utils/storage';
 import { TicketModal } from '../modals/TicketModal';
 import { 
   ArrowUpDown, 
@@ -40,12 +43,18 @@ import {
   BatteryCharging,
   ArrowRight,
   Info,
-  X
+  X,
+  Home as HomeIcon,
+  Briefcase,
+  Plane,
+  ShoppingBag,
+  Heart
 } from 'lucide-react';
 
 interface ActivityScreenProps {
   selectedSaccoId: string;
   onSelectSacco: (saccoId: string) => void;
+  initialOrigin?: string;
   initialDestination?: string;
   initialRouteId?: string;
 }
@@ -53,6 +62,7 @@ interface ActivityScreenProps {
 export const ActivityScreen: React.FC<ActivityScreenProps> = ({
   selectedSaccoId,
   onSelectSacco,
+  initialOrigin = 'Kencom Terminal (CBD)',
   initialDestination = '',
   initialRouteId,
 }) => {
@@ -62,10 +72,38 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
   );
 
   // Origin & Destination input strings
-  const [originText, setOriginText] = useState('Kencom Terminal (CBD)');
+  const [originText, setOriginText] = useState(initialOrigin || 'Kencom Terminal (CBD)');
   const [destinationText, setDestinationText] = useState(
     initialDestination || 'Westlands (Sarit/The Mall)'
   );
+
+  // Storage states synchronized across components
+  const [savedPlaces, setSavedPlaces] = useState<SavedPlace[]>(() => getSavedPlaces());
+  const [transportPrefs, setTransportPrefs] = useState<TransportPreferences>(() => getTransportPreferences());
+
+  useEffect(() => {
+    const handleStorageUpdate = () => {
+      setSavedPlaces(getSavedPlaces());
+      setTransportPrefs(getTransportPreferences());
+    };
+    window.addEventListener(STORAGE_EVENT, handleStorageUpdate);
+    return () => window.removeEventListener(STORAGE_EVENT, handleStorageUpdate);
+  }, []);
+
+  // Sync origin and destination if initial props change
+  React.useEffect(() => {
+    if (initialOrigin) {
+      setOriginText(initialOrigin);
+      setSelectedRouteId(null);
+    }
+  }, [initialOrigin]);
+
+  React.useEffect(() => {
+    if (initialDestination) {
+      setDestinationText(initialDestination);
+      setSelectedRouteId(null);
+    }
+  }, [initialDestination]);
 
   // Active search dropdown focus state
   const [focusedInput, setFocusedInput] = useState<'origin' | 'destination' | null>(null);
@@ -81,14 +119,6 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
     document.addEventListener('mousedown', handleOutsideClick);
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
-
-  // Sync destination if initialDestination prop changes
-  React.useEffect(() => {
-    if (initialDestination) {
-      setDestinationText(initialDestination);
-      setSelectedRouteId(null);
-    }
-  }, [initialDestination]);
 
   // Electric filter toggle
   const [isElectricOnly, setIsElectricOnly] = useState(false);
@@ -127,6 +157,20 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
     );
   }, [focusedInput, originText, destinationText]);
 
+  // Filter saved places matching search input
+  const matchingSavedPlaces = useMemo(() => {
+    const text = focusedInput === 'origin' ? originText : destinationText;
+    if (!text || !text.trim()) {
+      return savedPlaces;
+    }
+    const q = text.toLowerCase().trim();
+    return savedPlaces.filter(
+      (p) =>
+        p.title.toLowerCase().includes(q) ||
+        (p.address && p.address.toLowerCase().includes(q))
+    );
+  }, [focusedInput, originText, destinationText, savedPlaces]);
+
   // Dynamically resolve suggested routes connecting originStop to destinationStop
   const filteredRoutes = useMemo(() => {
     if (!originStop || !destinationStop || originStop.id === destinationStop.id) {
@@ -146,15 +190,41 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
     }
 
     // Alternative routes matching SACCO or electric filter
-    const alternativeRoutes = MOCK_ROUTES.filter((r) => {
+    let alternativeRoutes = MOCK_ROUTES.filter((r) => {
       if (r.id === primaryRoute.id) return false;
       if (selectedSaccoId !== 'all' && r.saccoId !== selectedSaccoId) return false;
       if (isElectricOnly && !r.isElectric) return false;
       return true;
-    }).slice(0, 3);
+    });
 
-    return [primaryRoute, ...alternativeRoutes];
-  }, [originStop, destinationStop, selectedSaccoId, isElectricOnly]);
+    if (transportPrefs.prioritizePreferred && transportPrefs.preferredSaccoIds.length > 0 && selectedSaccoId === 'all') {
+      alternativeRoutes = [...alternativeRoutes].sort((a, b) => {
+        const aFav = transportPrefs.preferredSaccoIds.includes(a.saccoId) ? 1 : 0;
+        const bFav = transportPrefs.preferredSaccoIds.includes(b.saccoId) ? 1 : 0;
+        return bFav - aFav;
+      });
+    }
+
+    return [primaryRoute, ...alternativeRoutes.slice(0, 3)];
+  }, [originStop, destinationStop, selectedSaccoId, isElectricOnly, transportPrefs]);
+
+  // Operator filter pills: preserves 'all' ("All SACCOs") as first option.
+  // When prioritizePreferred is active, preferred operators are placed immediately after "All SACCOs"
+  // without hiding any non-preferred operators.
+  const displaySaccos = useMemo(() => {
+    const list = [...SACCOS];
+    if (transportPrefs.prioritizePreferred && transportPrefs.preferredSaccoIds.length > 0) {
+      const allItem = list.find((s) => s.id === 'all');
+      const preferredItems = list.filter(
+        (s) => s.id !== 'all' && transportPrefs.preferredSaccoIds.includes(s.id)
+      );
+      const otherItems = list.filter(
+        (s) => s.id !== 'all' && !transportPrefs.preferredSaccoIds.includes(s.id)
+      );
+      return allItem ? [allItem, ...preferredItems, ...otherItems] : [...preferredItems, ...otherItems];
+    }
+    return list;
+  }, [transportPrefs]);
 
   const activeRoute = useMemo(() => {
     if (selectedRouteId) {
@@ -177,6 +247,10 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
   const handleRepeatTrip = (trip: PastTrip) => {
     setOriginText(trip.origin);
     setDestinationText(trip.destination);
+    const destStop = matchStopByQuery(trip.destination);
+    if (destStop) {
+      addRecentSearch(destStop.name, destStop.lat, destStop.lng, destStop.id, trip.saccoId);
+    }
     onSelectSacco(trip.saccoId);
     setSubTab('routes');
 
@@ -263,7 +337,7 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
 
         {/* Autocomplete Suggestions Dropdown */}
         {focusedInput && (
-          <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden max-h-60 overflow-y-auto z-50 animate-in fade-in slide-in-from-top-1">
+          <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden max-h-64 overflow-y-auto z-50 animate-in fade-in slide-in-from-top-1">
             <div className="p-2 border-b border-slate-100 flex items-center justify-between text-xs text-slate-400 font-semibold px-3">
               <span>Select {focusedInput === 'origin' ? 'Origin Stage' : 'Destination'}</span>
               <button 
@@ -273,51 +347,160 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
+
+            {/* Saved Places matching search */}
+            {matchingSavedPlaces.length > 0 && (
+              <div className="bg-slate-50/80 p-1 border-b border-slate-100">
+                <span className="text-[10px] uppercase font-bold text-slate-400 px-2.5 py-1 block">
+                  Saved Places
+                </span>
+                {matchingSavedPlaces.map((place) => {
+                  const Icon =
+                    place.iconName === 'home'
+                      ? HomeIcon
+                      : place.iconName === 'briefcase'
+                      ? Briefcase
+                      : place.iconName === 'plane'
+                      ? Plane
+                      : place.iconName === 'shopping-bag'
+                      ? ShoppingBag
+                      : MapPin;
+
+                  return (
+                    <button
+                      key={`sp-${place.id}`}
+                      onClick={() => {
+                        if (focusedInput === 'origin') {
+                          setOriginText(place.title);
+                        } else {
+                          setDestinationText(place.title);
+                          addRecentSearch(place.title, place.lat, place.lng, place.stopId);
+                        }
+                        setSelectedRouteId(null);
+                        setFocusedInput(null);
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-white rounded-xl transition flex items-center justify-between group"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-1.5 rounded-lg bg-white border border-slate-200 text-[#0b1b3d] group-hover:border-[#00e575]">
+                          <Icon className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-slate-900 group-hover:text-[#0b1b3d]">
+                            {place.title}
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            {place.address || 'Saved shortcut'}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-semibold">
+                        Saved
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Transit Stop Suggestions */}
             {currentSuggestions.length > 0 ? (
-              currentSuggestions.map((stop) => (
-                <button
-                  key={stop.id}
-                  onClick={() => {
-                    if (focusedInput === 'origin') {
-                      setOriginText(stop.name);
-                    } else {
-                      setDestinationText(stop.name);
-                    }
-                    setSelectedRouteId(null);
-                    setFocusedInput(null);
-                  }}
-                  className="w-full text-left px-3.5 py-2.5 hover:bg-slate-50 transition flex items-center justify-between border-b border-slate-50 last:border-0"
-                >
-                  <div>
-                    <div className="text-xs md:text-sm font-bold text-slate-900">{stop.name}</div>
-                    <div className="text-[11px] text-slate-500">{stop.area} • {stop.lines.join(', ')}</div>
-                  </div>
-                  <div className="text-[10px] text-slate-400 font-mono">
-                    [{stop.lat.toFixed(4)}, {stop.lng.toFixed(4)}]
-                  </div>
-                </button>
-              ))
-            ) : (
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 px-3.5 pt-2 pb-1 block">
+                  Nairobi Transit Stages
+                </span>
+                {currentSuggestions.map((stop) => (
+                  <button
+                    key={stop.id}
+                    onClick={() => {
+                      if (focusedInput === 'origin') {
+                        setOriginText(stop.name);
+                      } else {
+                        setDestinationText(stop.name);
+                        addRecentSearch(stop.name, stop.lat, stop.lng, stop.id);
+                      }
+                      setSelectedRouteId(null);
+                      setFocusedInput(null);
+                    }}
+                    className="w-full text-left px-3.5 py-2 hover:bg-slate-50 transition flex items-center justify-between border-b border-slate-50 last:border-0"
+                  >
+                    <div>
+                      <div className="text-xs md:text-sm font-bold text-slate-900">{stop.name}</div>
+                      <div className="text-[11px] text-slate-500">{stop.area} • {stop.lines.join(', ')}</div>
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono">
+                      [{stop.lat.toFixed(4)}, {stop.lng.toFixed(4)}]
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : matchingSavedPlaces.length === 0 ? (
               <div className="p-4 text-center text-xs text-slate-400">
                 No matching stages found. Try searching Kencom, Sarit, Yaya, or Karen.
               </div>
-            )}
+            ) : null}
+          </div>
+        )}
+
+        {/* Quick Saved Places Shortcuts */}
+        {savedPlaces.length > 0 && (
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center gap-2 overflow-x-auto no-scrollbar text-xs">
+            <span className="text-[10px] text-slate-400 uppercase font-bold shrink-0">
+              Saved:
+            </span>
+            {savedPlaces.map((place) => {
+              const Icon =
+                place.iconName === 'home'
+                  ? HomeIcon
+                  : place.iconName === 'briefcase'
+                  ? Briefcase
+                  : place.iconName === 'plane'
+                  ? Plane
+                  : place.iconName === 'shopping-bag'
+                  ? ShoppingBag
+                  : MapPin;
+
+              return (
+                <button
+                  key={place.id}
+                  onClick={() => {
+                    if (focusedInput === 'origin') {
+                      setOriginText(place.title);
+                    } else {
+                      setDestinationText(place.title);
+                      addRecentSearch(place.title, place.lat, place.lng, place.stopId);
+                    }
+                    setSelectedRouteId(null);
+                  }}
+                  className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 hover:text-emerald-900 border border-slate-200/70 font-semibold transition text-[11px]"
+                  title={`Set ${place.title} as ${focusedInput === 'origin' ? 'Origin' : 'Destination'}`}
+                >
+                  <Icon className="w-3 h-3 text-slate-500" />
+                  <span>{place.title}</span>
+                </button>
+              );
+            })}
           </div>
         )}
 
         {/* Quick Stage Presets */}
-        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2 overflow-x-auto no-scrollbar text-xs">
-          <span className="text-[11px] text-slate-400 uppercase font-bold shrink-0">
+        <div className="mt-2 pt-2 border-t border-slate-100 flex items-center gap-2 overflow-x-auto no-scrollbar text-xs">
+          <span className="text-[10px] text-slate-400 uppercase font-bold shrink-0">
             Stages:
           </span>
           {TRANSIT_STOPS.slice(0, 7).map((stop) => (
             <button
               key={stop.id}
               onClick={() => {
-                setDestinationText(stop.name);
+                if (focusedInput === 'origin') {
+                  setOriginText(stop.name);
+                } else {
+                  setDestinationText(stop.name);
+                  addRecentSearch(stop.name, stop.lat, stop.lng, stop.id);
+                }
                 setSelectedRouteId(null);
               }}
-              className="shrink-0 px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition"
+              className="shrink-0 px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition text-[11px]"
             >
               {stop.name.split(' ')[0]}
             </button>
@@ -364,8 +547,9 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
         </div>
 
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-          {SACCOS.map((sacco) => {
+          {displaySaccos.map((sacco) => {
             const isSelected = selectedSaccoId === sacco.id;
+            const isPreferred = sacco.id !== 'all' && transportPrefs.preferredSaccoIds.includes(sacco.id);
             return (
               <button
                 key={sacco.id}
@@ -373,9 +557,14 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
                 className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all ${
                   isSelected
                     ? 'bg-[#0b1b3d] text-white border-[#0b1b3d] shadow-xs'
+                    : isPreferred
+                    ? 'bg-rose-50/60 text-slate-800 border-rose-200 hover:border-rose-300 hover:bg-rose-50'
                     : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                 }`}
               >
+                {isPreferred && (
+                  <Heart className={`w-3 h-3 shrink-0 ${isSelected ? 'text-[#00e575] fill-[#00e575]' : 'text-rose-500 fill-rose-500'}`} />
+                )}
                 <span>{sacco.name}</span>
                 {sacco.isElectric && (
                   <span className="text-[10px] text-emerald-400">⚡</span>
@@ -469,8 +658,16 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
               if (selectedSaccoId !== 'all' && v.saccoId !== selectedSaccoId) return false;
               if (isElectricOnly && !v.isElectric) return false;
               return true;
+            }).sort((a, b) => {
+              if (transportPrefs.prioritizePreferred && selectedSaccoId === 'all') {
+                const aFav = transportPrefs.preferredSaccoIds.includes(a.saccoId) ? 1 : 0;
+                const bFav = transportPrefs.preferredSaccoIds.includes(b.saccoId) ? 1 : 0;
+                if (bFav !== aFav) return bFav - aFav;
+              }
+              return a.demoEtaMinutes - b.demoEtaMinutes;
             }).map((bus) => {
               const isSelected = selectedVehicle?.id === bus.id;
+              const isPreferred = transportPrefs.preferredSaccoIds.includes(bus.saccoId);
               return (
                 <div
                   key={bus.id}
@@ -493,11 +690,17 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
                         {bus.routeNumber}
                       </div>
                       <div>
-                        <div className="font-bold text-sm text-[#111827] flex items-center gap-1.5">
+                        <div className="font-bold text-sm text-[#111827] flex items-center gap-1.5 flex-wrap">
                           <span>{bus.plate}</span>
                           {bus.isElectric && (
                             <span className="text-[10px] font-bold text-[#006d43] bg-emerald-100 px-1.5 py-0.2 rounded-full">
                               ⚡ Electric
+                            </span>
+                          )}
+                          {isPreferred && (
+                            <span className="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200/80 px-1.5 py-0.2 rounded-full flex items-center gap-0.5">
+                              <Heart className="w-2.5 h-2.5 fill-rose-500 text-rose-500" />
+                              Preferred
                             </span>
                           )}
                         </div>
@@ -599,7 +802,7 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
                 >
                   <div className="flex items-start justify-between">
                     <div>
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className="font-extrabold text-xs px-2.5 py-0.5 rounded-full bg-[#0b1b3d] text-white">
                           {route.routeCode}
                         </span>
@@ -612,6 +815,12 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
                             }`}
                           >
                             {route.tag}
+                          </span>
+                        )}
+                        {transportPrefs.preferredSaccoIds.includes(route.saccoId) && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200/80 flex items-center gap-1">
+                            <Heart className="w-2.5 h-2.5 fill-rose-500 text-rose-500" />
+                            Preferred
                           </span>
                         )}
                         <span className="text-xs text-slate-500 font-medium">

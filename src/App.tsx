@@ -15,12 +15,20 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState<TabType>('home');
   const [selectedSaccoId, setSelectedSaccoId] = useState<string>('all');
   const [activeDestination, setActiveDestination] = useState<string>('Westlands (Sarit/The Mall)');
+  const [activeOrigin, setActiveOrigin] = useState<string>('Kencom Terminal (CBD)');
   const [activeRouteId, setActiveRouteId] = useState<string | undefined>('route-e105-westlands');
 
-  // Navigate to Activity with pre-filled destination/route
-  const handleNavigateToActivity = (destinationQuery?: string, selectedRouteId?: string) => {
+  // Navigate to Activity with pre-filled destination/route/origin
+  const handleNavigateToActivity = (
+    destinationQuery?: string,
+    selectedRouteId?: string,
+    originQuery?: string
+  ) => {
     if (destinationQuery) {
       setActiveDestination(destinationQuery);
+    }
+    if (originQuery) {
+      setActiveOrigin(originQuery);
     }
     setActiveRouteId(selectedRouteId);
     setCurrentTab('activity');
@@ -48,19 +56,14 @@ export default function App() {
           <ActivityScreen
             selectedSaccoId={selectedSaccoId}
             onSelectSacco={setSelectedSaccoId}
+            initialOrigin={activeOrigin}
             initialDestination={activeDestination}
             initialRouteId={activeRouteId}
           />
         )}
 
         {currentTab === 'account' && (
-          <AccountScreen
-            onUpdatePreferredSaccos={(preferred) => {
-              if (preferred.length > 0 && selectedSaccoId === 'all') {
-                setSelectedSaccoId(preferred[0]);
-              }
-            }}
-          />
+          <AccountScreen />
         )}
       </main>
 
