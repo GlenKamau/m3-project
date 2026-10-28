@@ -59,23 +59,60 @@ export function computeHaversineDistanceMeters(
 }
 
 /**
- * Pre-computes cumulative segment distances for a route's sequence of geographic coordinates
+ * Validates that a waypoint sequence represents a multi-segment road-following geometry
+ * (at least 3 valid [lat, lng] coordinates) and never a 2-point straight-line fallback.
+ */
+export function hasValidRoadWaypoints(waypoints: [number, number][] | null | undefined): boolean {
+  if (!Array.isArray(waypoints) || waypoints.length < 3) {
+    return false;
+  }
+
+  for (const pt of waypoints) {
+    if (
+      !Array.isArray(pt) ||
+      pt.length < 2 ||
+      typeof pt[0] !== 'number' ||
+      typeof pt[1] !== 'number' ||
+      isNaN(pt[0]) ||
+      isNaN(pt[1]) ||
+      !isFinite(pt[0]) ||
+      !isFinite(pt[1]) ||
+      pt[0] < -90 ||
+      pt[0] > 90 ||
+      pt[1] < -180 ||
+      pt[1] > 180
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Pre-computes cumulative segment distances for a route's sequence of geographic coordinates.
+ * Rejects 2-point straight lines or invalid coordinate sequences.
  */
 export function buildRouteGeometry(routeId: string, waypoints: [number, number][]): RouteGeometryData {
   if (routeGeometryCache.has(routeId)) {
-    return routeGeometryCache.get(routeId)!;
+    const cached = routeGeometryCache.get(routeId)!;
+    if (
+      cached.totalDistanceMeters > 0 &&
+      Array.isArray(waypoints) &&
+      cached.waypoints.length === waypoints.length
+    ) {
+      return cached;
+    }
   }
 
-  if (!waypoints || waypoints.length < 2) {
-    const emptyGeom: RouteGeometryData = {
+  if (!hasValidRoadWaypoints(waypoints)) {
+    return {
       routeId,
-      waypoints: waypoints || [],
+      waypoints: [],
       segmentDistances: [],
       cumulativeDistances: [0],
       totalDistanceMeters: 0,
     };
-    routeGeometryCache.set(routeId, emptyGeom);
-    return emptyGeom;
   }
 
   const segmentDistances: number[] = [];
@@ -99,8 +136,58 @@ export function buildRouteGeometry(routeId: string, waypoints: [number, number][
     totalDistanceMeters: accumulated,
   };
 
-  routeGeometryCache.set(routeId, geomData);
+  if (accumulated > 0) {
+    routeGeometryCache.set(routeId, geomData);
+  }
   return geomData;
+}
+
+/**
+ * Projects a geographic coordinate (lat, lng) onto the closest road segment of a RouteGeometryData,
+ * returning the cumulative distance along the route and the perpendicular offset in meters.
+ */
+export function projectPointOntoRouteGeometry(
+  geom: RouteGeometryData,
+  lat: number,
+  lng: number
+): { distanceMeters: number; minOffsetMeters: number } {
+  const { waypoints, segmentDistances, cumulativeDistances, totalDistanceMeters } = geom;
+  if (waypoints.length < 2 || totalDistanceMeters <= 0) {
+    return { distanceMeters: 0, minOffsetMeters: Infinity };
+  }
+
+  let bestDistanceAlongRoute = 0;
+  let minOffsetMeters = Infinity;
+
+  for (let i = 0; i < waypoints.length - 1; i++) {
+    const pA = waypoints[i];
+    const pB = waypoints[i + 1];
+    const segLen = segmentDistances[i];
+    if (segLen <= 0) continue;
+
+    const dLat = pB[0] - pA[0];
+    const dLng = pB[1] - pA[1];
+    const lenSq = dLat * dLat + dLng * dLng;
+
+    const t =
+      lenSq > 0
+        ? Math.max(0, Math.min(1, ((lat - pA[0]) * dLat + (lng - pA[1]) * dLng) / lenSq))
+        : 0;
+
+    const projLat = pA[0] + t * dLat;
+    const projLng = pA[1] + t * dLng;
+    const offsetMeters = computeHaversineDistanceMeters(lat, lng, projLat, projLng);
+
+    if (offsetMeters < minOffsetMeters) {
+      minOffsetMeters = offsetMeters;
+      bestDistanceAlongRoute = cumulativeDistances[i] + t * segLen;
+    }
+  }
+
+  return {
+    distanceMeters: Math.max(0, Math.min(bestDistanceAlongRoute, totalDistanceMeters)),
+    minOffsetMeters,
+  };
 }
 
 /**
@@ -157,24 +244,34 @@ export function initializeVehicleSimulation(
   vehicles: Vehicle[],
   routes: RouteOption[] = MOCK_ROUTES
 ): Map<string, AnimatedVehicleState> {
-  vehicles.forEach((vehicle, index) => {
-    // If state already exists for this stable bus ID, preserve its active progress & direction
-    if (persistentVehicleStates.has(vehicle.id)) {
-      const existing = persistentVehicleStates.get(vehicle.id)!;
-      // Sync metadata in case speed or plate was updated
-      existing.speedKmH = vehicle.speed || existing.speedKmH;
-      return;
-    }
+  const staggerFractions = [0.18, 0.42, 0.68, 0.88, 0.28, 0.55, 0.75, 0.35];
 
-    // Look up assigned route by vehicle.routeId
+  vehicles.forEach((vehicle, index) => {
+    // Look up assigned route by vehicle.routeId or routeNumber
     let route = routes.find((r) => r.id === vehicle.routeId);
     if (!route) {
-      // Fallback matching by routeNumber
       route = routes.find((r) => r.routeCode === vehicle.routeNumber);
     }
 
-    if (!route || !route.waypoints || route.waypoints.length < 2) {
-      // Route geometry is unavailable. Do NOT create straight line fallback.
+    // If state already exists for this stable bus ID and its valid route geometry is unchanged,
+    // preserve its active progress & direction across React renders and filter toggles
+    if (persistentVehicleStates.has(vehicle.id)) {
+      const existing = persistentVehicleStates.get(vehicle.id)!;
+      if (
+        existing.isGeometryAvailable &&
+        existing.geometry &&
+        route &&
+        existing.routeId === route.id &&
+        existing.geometry.waypoints.length === route.waypoints.length
+      ) {
+        existing.speedKmH = vehicle.speed || existing.speedKmH;
+        existing.destination = vehicle.destination || existing.destination;
+        return;
+      }
+    }
+
+    if (!route || !hasValidRoadWaypoints(route.waypoints)) {
+      // Route geometry is unavailable or invalid (< 3 road points). Do NOT create straight-line fallback.
       persistentVehicleStates.set(vehicle.id, {
         id: vehicle.id,
         plate: vehicle.plate,
@@ -197,11 +294,38 @@ export function initializeVehicleSimulation(
 
     // Pre-calculate cumulative route segment distances
     const geometry = buildRouteGeometry(route.id, route.waypoints);
+    if (geometry.totalDistanceMeters <= 0) {
+      persistentVehicleStates.set(vehicle.id, {
+        id: vehicle.id,
+        plate: vehicle.plate,
+        saccoId: vehicle.saccoId,
+        saccoName: vehicle.saccoName,
+        routeId: route.id,
+        routeNumber: vehicle.routeNumber,
+        destination: vehicle.destination,
+        lat: vehicle.lat,
+        lng: vehicle.lng,
+        heading: vehicle.heading || 0,
+        speedKmH: 0,
+        currentDistanceMeters: 0,
+        direction: 1,
+        isGeometryAvailable: false,
+        geometry: null,
+      });
+      return;
+    }
 
-    // Stagger initial positions so buses on the same route are distributed along the road
-    const staggerFractions = [0.18, 0.42, 0.68, 0.88, 0.28, 0.55, 0.75, 0.35];
+    // Project the vehicle's starting coordinate onto its assigned road geometry
+    const projection = projectPointOntoRouteGeometry(geometry, vehicle.lat, vehicle.lng);
+    const hasInteriorProjection =
+      projection.minOffsetMeters <= 500 &&
+      projection.distanceMeters > 20 &&
+      projection.distanceMeters < geometry.totalDistanceMeters - 20;
+
     const initialFraction = staggerFractions[index % staggerFractions.length];
-    const initialDistance = initialFraction * geometry.totalDistanceMeters;
+    const initialDistance = hasInteriorProjection
+      ? projection.distanceMeters
+      : initialFraction * geometry.totalDistanceMeters;
     const initialDirection: 1 | -1 = index % 2 === 0 ? 1 : -1;
 
     const initialPos = calculatePositionAtDistance(geometry, initialDistance, initialDirection);

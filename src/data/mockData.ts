@@ -275,23 +275,28 @@ export const TRANSIT_STOPS: TransitStop[] = [
 
 // Dense, road-following coordinate polylines for Nairobi's major arterial transit corridors
 export const CORRIDOR_WAYPOINTS = {
-  // Waiyaki Way Corridor (CBD Kencom <-> Westlands <-> Uthiru)
+  // Waiyaki Way Corridor (CBD Kencom <-> Westlands [0..9] <-> Uthiru [9..19])
   waiyakiWay: [
-    [-1.2844, 36.8249], // Kencom Terminal
-    [-1.2831, 36.8228], // Moi Ave / City Hall Way
-    [-1.2810, 36.8188], // University Way roundabout
-    [-1.2785, 36.8164], // Uhuru Highway
-    [-1.2758, 36.8150], // Approaching Museum Hill
-    [-1.2742, 36.8142], // Museum Hill flyover
-    [-1.2720, 36.8130], // Chiromo curve
-    [-1.2690, 36.8100], // Chiromo Bypass
-    [-1.2670, 36.8075], // Kempinski curve
-    [-1.2655, 36.8048], // Westlands Stage (Sarit/The Mall)
-    [-1.2635, 36.7970], // ABC Place
-    [-1.2618, 36.7860], // Waiyaki Way expressway curve
-    [-1.2605, 36.7720], // Kangemi flyover
-    [-1.2595, 36.7550], // Mountain View
-    [-1.2585, 36.7320], // Uthiru Stage
+    [-1.2844, 36.8249], // 0: Kencom Terminal
+    [-1.2831, 36.8228], // 1: Moi Ave / City Hall Way
+    [-1.2810, 36.8188], // 2: University Way roundabout
+    [-1.2785, 36.8164], // 3: Uhuru Highway
+    [-1.2758, 36.8150], // 4: Approaching Museum Hill
+    [-1.2742, 36.8142], // 5: Museum Hill flyover
+    [-1.2720, 36.8130], // 6: Chiromo curve
+    [-1.2690, 36.8100], // 7: Chiromo Bypass
+    [-1.2670, 36.8075], // 8: Kempinski curve
+    [-1.2655, 36.8048], // 9: Westlands Stage (Sarit/The Mall)
+    [-1.2644, 36.8010], // 10: Safaricom HQ / Waiyaki Way
+    [-1.2635, 36.7970], // 11: ABC Place
+    [-1.2625, 36.7915], // 12: James Gichuru Junction
+    [-1.2618, 36.7860], // 13: Loresho Turnoff / Waiyaki Way curve
+    [-1.2610, 36.7790], // 14: Kangemi approach
+    [-1.2605, 36.7720], // 15: Kangemi flyover
+    [-1.2598, 36.7635], // 16: Mountain View approach
+    [-1.2595, 36.7550], // 17: Mountain View stage
+    [-1.2590, 36.7435], // 18: Kinoo / 87 stage
+    [-1.2585, 36.7320], // 19: Uthiru Stage
   ] as [number, number][],
 
   // Thika Superhighway Corridor (CBD Odeon <-> Pangani <-> Roysambu <-> Kasarani)
@@ -344,20 +349,36 @@ export const CORRIDOR_WAYPOINTS = {
     [-1.3180, 36.8580], // Sameer Business Park
     [-1.3210, 36.8620], // Panari Hotel
     [-1.3255, 36.8740], // General Motors
+    [-1.3285, 36.8835], // Imara Daima / Cabanas approach
     [-1.3310, 36.8930], // City Cabanas interchange
+    [-1.3330, 36.9000], // Eastern Bypass / Airport North junction
     [-1.3340, 36.9060], // Airport North Rd
     [-1.3345, 36.9180], // JKIA Entry
     [-1.3323, 36.9275], // JKIA Terminals 1 & 2
   ] as [number, number][],
 
-  // Upper Hill / Langata Loop (Ambassadeur <-> Upper Hill <-> South C)
+  // Upper Hill Community Corridor (Ambassadeur <-> Railways <-> Upper Hill Britam)
   upperHillLoop: [
-    [-1.2868, 36.8272], // Ambassadeur
-    [-1.2912, 36.8285], // Railways
-    [-1.2950, 36.8210], // Haile Selassie
-    [-1.2982, 36.8155], // Upper Hill (Britam)
-    [-1.3050, 36.8100], // Mbagathi Way link
-    [-1.3150, 36.8050], // South C / Langata
+    [-1.2868, 36.8272], // Ambassadeur / Moi Ave
+    [-1.2888, 36.8278], // Moi Ave South / Haile Selassie junction
+    [-1.2912, 36.8285], // Nairobi Central Railway
+    [-1.2920, 36.8252], // Haile Selassie Ave West
+    [-1.2935, 36.8210], // Uhuru Highway / Haile Selassie roundabout
+    [-1.2950, 36.8210], // Community / Upper Hill approach
+    [-1.2964, 36.8190], // Ragati Rd / Kenyatta Ave link
+    [-1.2975, 36.8172], // Hospital Rd / Britam Tower approach
+    [-1.2982, 36.8155], // Upper Hill (Britam / Hospital Rd)
+  ] as [number, number][],
+
+  // CBD Arterial Connector (Odeon <-> Kencom <-> Ambassadeur <-> Railways)
+  cbdLoop: [
+    [-1.2818, 36.8252], // Odeon Cinema Stage
+    [-1.2830, 36.8248], // Moi Ave Central
+    [-1.2844, 36.8249], // Kencom Terminal
+    [-1.2856, 36.8260], // Moi Ave / City Hall Way
+    [-1.2868, 36.8272], // Ambassadeur / Moi Ave
+    [-1.2890, 36.8279], // Moi Ave South
+    [-1.2912, 36.8285], // Nairobi Central Railway
   ] as [number, number][],
 };
 
@@ -698,7 +719,7 @@ export const MOCK_VEHICLES: Vehicle[] = [
     saccoName: 'Super Metro',
     routeId: 'route-sm105-westlands',
     routeNumber: 'SM-105',
-    destination: 'Uthiru Stage',
+    destination: 'Westlands (Sarit)',
     origin: 'Kencom CBD',
     lat: -1.2690,
     lng: 36.8100,
@@ -1115,9 +1136,79 @@ function getStopCorridorKey(stopId: string): 'cbd' | 'waiyaki' | 'thika' | 'ngon
   return 'upperhill';
 }
 
+function getCorridorWaypointsForKey(
+  key: 'cbd' | 'waiyaki' | 'thika' | 'ngong' | 'mombasa' | 'upperhill'
+): [number, number][] {
+  switch (key) {
+    case 'waiyaki':
+      return CORRIDOR_WAYPOINTS.waiyakiWay;
+    case 'thika':
+      return CORRIDOR_WAYPOINTS.thikaHighway;
+    case 'ngong':
+      return CORRIDOR_WAYPOINTS.ngongRoad;
+    case 'mombasa':
+      return CORRIDOR_WAYPOINTS.mombasaRoad;
+    case 'upperhill':
+      return CORRIDOR_WAYPOINTS.upperHillLoop;
+    case 'cbd':
+    default:
+      return CORRIDOR_WAYPOINTS.cbdLoop;
+  }
+}
+
+/**
+ * Slices a corridor polyline in the direction of travel between two target coordinates.
+ */
+function sliceCorridorBetweenCoords(
+  corridor: [number, number][],
+  fromLat: number,
+  fromLng: number,
+  toLat: number,
+  toLng: number
+): [number, number][] {
+  let bestFromIdx = 0;
+  let bestFromDist = Infinity;
+  let bestToIdx = 0;
+  let bestToDist = Infinity;
+
+  corridor.forEach((pt, idx) => {
+    const dFrom = getDistanceMeters(pt[0], pt[1], fromLat, fromLng);
+    if (dFrom < bestFromDist) {
+      bestFromDist = dFrom;
+      bestFromIdx = idx;
+    }
+    const dTo = getDistanceMeters(pt[0], pt[1], toLat, toLng);
+    if (dTo < bestToDist) {
+      bestToDist = dTo;
+      bestToIdx = idx;
+    }
+  });
+
+  if (bestFromIdx <= bestToIdx) {
+    return corridor.slice(bestFromIdx, bestToIdx + 1);
+  }
+  return corridor.slice(bestToIdx, bestFromIdx + 1).reverse();
+}
+
+/**
+ * Appends waypoints to an existing path while deduplicating nearly-identical consecutive points.
+ */
+function appendWaypoints(path: [number, number][], points: [number, number][]): void {
+  points.forEach((pt) => {
+    if (path.length === 0) {
+      path.push([pt[0], pt[1]]);
+      return;
+    }
+    const last = path[path.length - 1];
+    if (getDistanceMeters(last[0], last[1], pt[0], pt[1]) > 15) {
+      path.push([pt[0], pt[1]]);
+    }
+  });
+}
+
 /**
  * Route Resolver: Returns or generates a road-following route connecting two stops.
- * Returns null if endpoints are missing or identical (triggering route-unavailable state).
+ * Returns null if endpoints are missing, identical, or if valid road geometry cannot be formed.
  */
 export function findOrCreateRoute(
   fromStop: TransitStop | null | undefined,
@@ -1165,13 +1256,11 @@ export function findOrCreateRoute(
     };
   }
 
-  // Synthesize a road-following route between the stops along known arterial transit corridors
-  let corridor = CORRIDOR_WAYPOINTS.waiyakiWay;
+  // Determine operator and electric status based on corridor
   let isElectric = true;
   let sacco = SACCOS[1]; // Super Metro
 
   if (toStop.id === 'stop-jkia' || fromStop.id === 'stop-jkia') {
-    corridor = CORRIDOR_WAYPOINTS.mombasaRoad;
     sacco = SACCOS[2]; // BasiGo
   } else if (
     toStop.id === 'stop-karen' ||
@@ -1181,7 +1270,6 @@ export function findOrCreateRoute(
     toStop.id === 'stop-yaya' ||
     fromStop.id === 'stop-yaya'
   ) {
-    corridor = CORRIDOR_WAYPOINTS.ngongRoad;
     isElectric = false;
     sacco = SACCOS[3]; // City Hoppa
   } else if (
@@ -1192,62 +1280,133 @@ export function findOrCreateRoute(
     toStop.id === 'stop-pangani' ||
     fromStop.id === 'stop-pangani'
   ) {
-    corridor = CORRIDOR_WAYPOINTS.thikaHighway;
     sacco = SACCOS[1]; // Super Metro
-  } else if (
-    toStop.id === 'stop-upperhill' ||
-    fromStop.id === 'stop-upperhill'
-  ) {
-    corridor = CORRIDOR_WAYPOINTS.upperHillLoop;
+  } else if (toStop.id === 'stop-upperhill' || fromStop.id === 'stop-upperhill') {
     sacco = SACCOS[3]; // City Hoppa
     isElectric = false;
   }
 
-  // Find projected nearest waypoint indices along corridor
-  let bestFromIdx = 0;
-  let bestFromDist = Infinity;
-  let bestToIdx = 0;
-  let bestToDist = Infinity;
-
-  corridor.forEach((pt, idx) => {
-    const dFrom = getDistanceMeters(pt[0], pt[1], fromStop.lat, fromStop.lng);
-    if (dFrom < bestFromDist) {
-      bestFromDist = dFrom;
-      bestFromIdx = idx;
+  if (saccoId !== 'all') {
+    const requestedSacco = SACCOS.find((s) => s.id === saccoId);
+    if (requestedSacco) {
+      sacco = requestedSacco;
+      isElectric = requestedSacco.isElectric;
     }
-    const dTo = getDistanceMeters(pt[0], pt[1], toStop.lat, toStop.lng);
-    if (dTo < bestToDist) {
-      bestToDist = dTo;
-      bestToIdx = idx;
-    }
-  });
-
-  // Slice corridor according to direction of travel
-  let slicedCorridor: [number, number][];
-  if (bestFromIdx <= bestToIdx) {
-    slicedCorridor = corridor.slice(bestFromIdx, bestToIdx + 1);
-  } else {
-    slicedCorridor = corridor.slice(bestToIdx, bestFromIdx + 1).reverse();
+  } else if (isElectricOnly && !isElectric) {
+    sacco = SACCOS[1]; // Super Metro electric fleet
+    isElectric = true;
   }
 
-  // Construct complete road-following waypoint path starting at fromStop and ending at toStop
+  const fromCorridorKey = getStopCorridorKey(fromStop.id);
+  const toCorridorKey = getStopCorridorKey(toStop.id);
+  const needsCbdTransfer =
+    fromCorridorKey !== 'cbd' &&
+    toCorridorKey !== 'cbd' &&
+    fromCorridorKey !== toCorridorKey;
+
   const path: [number, number][] = [[fromStop.lat, fromStop.lng]];
-  slicedCorridor.forEach((pt) => {
-    const last = path[path.length - 1];
-    if (getDistanceMeters(last[0], last[1], pt[0], pt[1]) > 50) {
-      path.push(pt);
+
+  if (needsCbdTransfer) {
+    // Stitch Leg 1 (inbound along fromCorridor to its CBD hub), CBD road connector, and Leg 2 (outbound along toCorridor)
+    const fromCorridor = getCorridorWaypointsForKey(fromCorridorKey);
+    const toCorridor = getCorridorWaypointsForKey(toCorridorKey);
+    const fromCbdHub = fromCorridor[0];
+    const toCbdHub = toCorridor[0];
+
+    const inboundLeg = sliceCorridorBetweenCoords(
+      fromCorridor,
+      fromStop.lat,
+      fromStop.lng,
+      fromCbdHub[0],
+      fromCbdHub[1]
+    );
+    const cbdConnector = sliceCorridorBetweenCoords(
+      CORRIDOR_WAYPOINTS.cbdLoop,
+      fromCbdHub[0],
+      fromCbdHub[1],
+      toCbdHub[0],
+      toCbdHub[1]
+    );
+    const outboundLeg = sliceCorridorBetweenCoords(
+      toCorridor,
+      toCbdHub[0],
+      toCbdHub[1],
+      toStop.lat,
+      toStop.lng
+    );
+
+    appendWaypoints(path, inboundLeg);
+    appendWaypoints(path, cbdConnector);
+    appendWaypoints(path, outboundLeg);
+  } else if (fromCorridorKey === 'cbd' && toCorridorKey === 'cbd') {
+    // Both stops are within CBD: route along the CBD arterial road loop
+    const cbdSlice = sliceCorridorBetweenCoords(
+      CORRIDOR_WAYPOINTS.cbdLoop,
+      fromStop.lat,
+      fromStop.lng,
+      toStop.lat,
+      toStop.lng
+    );
+    appendWaypoints(path, cbdSlice);
+  } else {
+    // Same corridor, or one endpoint is in CBD and the other is on an outer corridor
+    const activeCorridorKey = fromCorridorKey !== 'cbd' ? fromCorridorKey : toCorridorKey;
+    const corridor = getCorridorWaypointsForKey(activeCorridorKey);
+    const corridorCbdHub = corridor[0];
+
+    if (fromCorridorKey === 'cbd' && getDistanceMeters(fromStop.lat, fromStop.lng, corridorCbdHub[0], corridorCbdHub[1]) > 80) {
+      // First connect from the CBD origin stop along CBD roads to the corridor's CBD terminal
+      const cbdApproach = sliceCorridorBetweenCoords(
+        CORRIDOR_WAYPOINTS.cbdLoop,
+        fromStop.lat,
+        fromStop.lng,
+        corridorCbdHub[0],
+        corridorCbdHub[1]
+      );
+      appendWaypoints(path, cbdApproach);
     }
-  });
-  const lastPt = path[path.length - 1];
-  if (getDistanceMeters(lastPt[0], lastPt[1], toStop.lat, toStop.lng) > 50) {
-    path.push([toStop.lat, toStop.lng]);
+
+    const mainSlice = sliceCorridorBetweenCoords(
+      corridor,
+      path[path.length - 1][0],
+      path[path.length - 1][1],
+      toStop.lat,
+      toStop.lng
+    );
+    appendWaypoints(path, mainSlice);
+
+    if (toCorridorKey === 'cbd' && getDistanceMeters(path[path.length - 1][0], path[path.length - 1][1], toStop.lat, toStop.lng) > 80) {
+      // Connect from the corridor's CBD terminal along CBD roads to the CBD destination stop
+      const cbdExit = sliceCorridorBetweenCoords(
+        CORRIDOR_WAYPOINTS.cbdLoop,
+        path[path.length - 1][0],
+        path[path.length - 1][1],
+        toStop.lat,
+        toStop.lng
+      );
+      appendWaypoints(path, cbdExit);
+    }
   }
 
-  // Identify intermediate stops along this sliced path in order of travel
+  // Ensure exact destination coordinate is the final point
+  const lastPt = path[path.length - 1];
+  if (getDistanceMeters(lastPt[0], lastPt[1], toStop.lat, toStop.lng) > 10) {
+    path.push([toStop.lat, toStop.lng]);
+  } else {
+    path[path.length - 1] = [toStop.lat, toStop.lng];
+  }
+  // Ensure exact origin coordinate is the first point
+  path[0] = [fromStop.lat, fromStop.lng];
+
+  // Never allow a 2-point straight-line fallback
+  if (path.length < 3) {
+    return null;
+  }
+
+  // Identify intermediate stops along this road path in order of travel
   const intermediateStops: { stop: TransitStop; distFromStart: number }[] = [];
   TRANSIT_STOPS.forEach((st) => {
     if (st.id === fromStop.id || st.id === toStop.id) return;
-    // Check minimal distance from stop to any waypoint along path
     let minDist = Infinity;
     let closestWaypointIdx = 0;
     path.forEach((wpt, wIdx) => {
@@ -1257,22 +1416,12 @@ export function findOrCreateRoute(
         closestWaypointIdx = wIdx;
       }
     });
-    // If within ~500m of the corridor line, consider it an intermediate stop
     if (minDist <= 550) {
       intermediateStops.push({ stop: st, distFromStart: closestWaypointIdx });
     }
   });
 
-  // Sort intermediate stops in direction of travel
   intermediateStops.sort((a, b) => a.distFromStart - b.distFromStart);
-
-  // Detect if origin and destination lie on two non-CBD corridors requiring a CBD interchange
-  const fromCorridor = getStopCorridorKey(fromStop.id);
-  const toCorridor = getStopCorridorKey(toStop.id);
-  const needsCbdTransfer =
-    fromCorridor !== 'cbd' &&
-    toCorridor !== 'cbd' &&
-    fromCorridor !== toCorridor;
 
   let transferStop: TransitStop | undefined;
   if (needsCbdTransfer) {

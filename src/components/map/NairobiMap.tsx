@@ -68,7 +68,9 @@ export const NairobiMap: React.FC<NairobiMapProps> = ({
   const intermediateMarkersRef = useRef<L.Marker[]>([]);
 
   // Animation simulation state
-  const simulationStatesRef = useRef<Map<string, AnimatedVehicleState>>(new Map());
+  const simulationStatesRef = useRef<Map<string, AnimatedVehicleState>>(
+    initializeVehicleSimulation(vehicles, MOCK_ROUTES)
+  );
   const animFrameIdRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(performance.now());
 
@@ -82,7 +84,7 @@ export const NairobiMap: React.FC<NairobiMapProps> = ({
   // Read MapTiler API Key strictly from environment variable
   const mapTilerKey = (import.meta.env.VITE_MAPTILER_API_KEY as string | undefined)?.trim();
 
-  // Initialize simulation states on mount
+  // Initialize simulation states when vehicles prop updates
   useEffect(() => {
     simulationStatesRef.current = initializeVehicleSimulation(vehicles, MOCK_ROUTES);
   }, [vehicles]);
@@ -180,13 +182,17 @@ export const NairobiMap: React.FC<NairobiMapProps> = ({
       }
     }
 
-    // Create markers for filtered vehicles
+    // Create markers for filtered vehicles with valid road-following geometry
     filteredVehicles.forEach((vehicle) => {
+      const simState = simulationStatesRef.current.get(vehicle.id);
+      if (!simState || !simState.isGeometryAvailable || !simState.geometry) {
+        return;
+      }
+
       const isSelected = inspectedVehicle?.id === vehicle.id;
       const isElectric = vehicle.isElectric;
-      const simState = simulationStatesRef.current.get(vehicle.id);
-      const lat = simState?.lat ?? vehicle.lat;
-      const lng = simState?.lng ?? vehicle.lng;
+      const lat = simState.lat;
+      const lng = simState.lng;
 
       const iconHtml = `
         <div class="relative group cursor-pointer" style="transform: translate(-50%, -50%);">
@@ -250,7 +256,7 @@ export const NairobiMap: React.FC<NairobiMapProps> = ({
       const markers = vehicleMarkersRef.current;
 
       simMap.forEach((state, vehicleId) => {
-        if (markers.has(vehicleId)) {
+        if (state.isGeometryAvailable && state.geometry && markers.has(vehicleId)) {
           const { lat, lng } = stepVehicleSimulation(state, deltaSeconds);
           const marker = markers.get(vehicleId);
           if (marker) {

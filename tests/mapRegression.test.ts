@@ -260,6 +260,41 @@ async function runTestSuite() {
     'C.5 Bus reached route start and smoothly reversed direction to 1'
   );
 
+  // Every bus remains strictly on its road-following route segments after stepping
+  MOCK_VEHICLES.forEach((v) => {
+    const st = simStates.get(v.id)!;
+    const pos = stepVehicleSimulation(st, 2.0);
+    const route = MOCK_ROUTES.find((r) => r.id === v.routeId)!;
+    const startMatch =
+      route.waypoints[0][0] === route.fromStop.lat &&
+      route.waypoints[0][1] === route.fromStop.lng;
+    const endPt = route.waypoints[route.waypoints.length - 1];
+    const endMatch =
+      endPt[0] === route.toStop.lat &&
+      endPt[1] === route.toStop.lng;
+    assert(
+      startMatch && endMatch && route.waypoints.length >= 8 && !isNaN(pos.lat),
+      `C.6 Bus ${v.id} (${v.routeNumber}) follows complete road geometry (${route.waypoints.length} pts) terminating at ${route.toStop.name}`
+    );
+  });
+
+  // 2-point straight-line fallback must be rejected by buildRouteGeometry
+  const straightLineGeom = buildRouteGeometry('test-straight-2pt', [
+    [-1.2844, 36.8249],
+    [-1.2655, 36.8048],
+  ]);
+  assert(
+    straightLineGeom.totalDistanceMeters === 0 && straightLineGeom.waypoints.length === 0,
+    'C.7 2-point straight-line geometry is strictly rejected (no straight-line fallback)'
+  );
+
+  // Cross-corridor route (Westlands -> Yaya Centre) stitches road corridors through CBD (never 2-point line)
+  const crossCorridorRoute = findOrCreateRoute(stopSarit, stopYaya);
+  assert(
+    !!crossCorridorRoute && crossCorridorRoute.waypoints.length >= 10,
+    `C.8 Cross-corridor route (Westlands -> Yaya) stitches road segments (${crossCorridorRoute?.waypoints.length} pts)`
+  );
+
   console.log('\nTRACK D & E: Geodesic Math & Routing Service Caching:');
 
   // Haversine distance accuracy

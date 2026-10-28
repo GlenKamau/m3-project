@@ -47,7 +47,7 @@ function getItem(key: string): string | null {
   return memoryStorage[key] ?? null;
 }
 
-function setItem(key: string, value: string): void {
+function setItem(key: string, value: string, notify: boolean = true): void {
   if (isLocalStorageAvailable()) {
     try {
       window.localStorage.setItem(key, value);
@@ -58,8 +58,8 @@ function setItem(key: string, value: string): void {
     memoryStorage[key] = value;
   }
 
-  // Notify active components in the current window
-  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+  // Notify active components in the current window only on explicit mutations (not read-time seeding)
+  if (notify && typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
     try {
       window.dispatchEvent(new CustomEvent(STORAGE_EVENT, { detail: { key } }));
     } catch {
@@ -68,7 +68,7 @@ function setItem(key: string, value: string): void {
   }
 }
 
-function removeItem(key: string): void {
+function removeItem(key: string, notify: boolean = true): void {
   if (isLocalStorageAvailable()) {
     try {
       window.localStorage.removeItem(key);
@@ -79,7 +79,7 @@ function removeItem(key: string): void {
     delete memoryStorage[key];
   }
 
-  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+  if (notify && typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
     try {
       window.dispatchEvent(new CustomEvent(STORAGE_EVENT, { detail: { key } }));
     } catch {
@@ -187,10 +187,10 @@ export function isValidTripRecord(item: unknown): item is PastTrip {
 export function getSavedPlaces(): SavedPlace[] {
   const raw = getItem(STORAGE_KEYS.SAVED_PLACES);
   if (!raw) {
-    // Seed storage with default mock saved places
+    // Seed storage with default mock saved places silently
     const defaults = [...MOCK_SAVED_PLACES];
     try {
-      setItem(STORAGE_KEYS.SAVED_PLACES, JSON.stringify(defaults));
+      setItem(STORAGE_KEYS.SAVED_PLACES, JSON.stringify(defaults), false);
     } catch {
       // Ignore write failure
     }
@@ -201,21 +201,21 @@ export function getSavedPlaces(): SavedPlace[] {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) {
       console.warn('[m3 storage] Saved places payload is not an array. Resetting to defaults.');
-      setItem(STORAGE_KEYS.SAVED_PLACES, JSON.stringify(MOCK_SAVED_PLACES));
+      setItem(STORAGE_KEYS.SAVED_PLACES, JSON.stringify(MOCK_SAVED_PLACES), false);
       return [...MOCK_SAVED_PLACES];
     }
 
     const validPlaces = parsed.filter(isValidSavedPlace);
     if (validPlaces.length === 0) {
       console.warn('[m3 storage] No valid saved places found in array. Resetting to defaults.');
-      setItem(STORAGE_KEYS.SAVED_PLACES, JSON.stringify(MOCK_SAVED_PLACES));
+      setItem(STORAGE_KEYS.SAVED_PLACES, JSON.stringify(MOCK_SAVED_PLACES), false);
       return [...MOCK_SAVED_PLACES];
     }
 
     return validPlaces;
   } catch (err) {
     console.error('[m3 storage] Corrupted JSON in saved places storage. Recovering defaults.', err);
-    setItem(STORAGE_KEYS.SAVED_PLACES, JSON.stringify(MOCK_SAVED_PLACES));
+    setItem(STORAGE_KEYS.SAVED_PLACES, JSON.stringify(MOCK_SAVED_PLACES), false);
     return [...MOCK_SAVED_PLACES];
   }
 }
@@ -289,7 +289,7 @@ export function getRecentSearches(): RecentSearch[] {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) {
       console.warn('[m3 storage] Recent searches payload is not an array. Resetting.');
-      removeItem(STORAGE_KEYS.RECENT_SEARCHES);
+      removeItem(STORAGE_KEYS.RECENT_SEARCHES, false);
       return [];
     }
 
@@ -299,7 +299,7 @@ export function getRecentSearches(): RecentSearch[] {
     return validSearches.slice(0, MAX_RECENT_SEARCHES);
   } catch (err) {
     console.error('[m3 storage] Corrupted JSON in recent searches. Clearing.', err);
-    removeItem(STORAGE_KEYS.RECENT_SEARCHES);
+    removeItem(STORAGE_KEYS.RECENT_SEARCHES, false);
     return [];
   }
 }
@@ -383,7 +383,7 @@ export function getTransportPreferences(): TransportPreferences {
       prioritizePreferred: DEFAULT_TRANSPORT_PREFERENCES.prioritizePreferred,
     };
     try {
-      setItem(STORAGE_KEYS.TRANSPORT_PREFERENCES, JSON.stringify(defaults));
+      setItem(STORAGE_KEYS.TRANSPORT_PREFERENCES, JSON.stringify(defaults), false);
     } catch {
       // Ignore write failure in test/isolated env
     }
@@ -395,7 +395,7 @@ export function getTransportPreferences(): TransportPreferences {
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
       console.warn('[m3 storage] Malformed transport preferences payload. Resetting to defaults.');
       const defaults = { ...DEFAULT_TRANSPORT_PREFERENCES, preferredSaccoIds: [...DEFAULT_TRANSPORT_PREFERENCES.preferredSaccoIds] };
-      setItem(STORAGE_KEYS.TRANSPORT_PREFERENCES, JSON.stringify(defaults));
+      setItem(STORAGE_KEYS.TRANSPORT_PREFERENCES, JSON.stringify(defaults), false);
       return defaults;
     }
 
@@ -420,16 +420,16 @@ export function getTransportPreferences(): TransportPreferences {
       prioritizePreferred: prioritize,
     };
 
-    // If payload was partly malformed, re-persist sanitized version
+    // If payload was partly malformed, re-persist sanitized version silently
     if (validIds.length !== rawIds.length || typeof parsed.prioritizePreferred !== 'boolean') {
-      setItem(STORAGE_KEYS.TRANSPORT_PREFERENCES, JSON.stringify(sanitized));
+      setItem(STORAGE_KEYS.TRANSPORT_PREFERENCES, JSON.stringify(sanitized), false);
     }
 
     return sanitized;
   } catch (err) {
     console.error('[m3 storage] Corrupted JSON in transport preferences. Resetting.', err);
     const defaults = { ...DEFAULT_TRANSPORT_PREFERENCES, preferredSaccoIds: [...DEFAULT_TRANSPORT_PREFERENCES.preferredSaccoIds] };
-    setItem(STORAGE_KEYS.TRANSPORT_PREFERENCES, JSON.stringify(defaults));
+    setItem(STORAGE_KEYS.TRANSPORT_PREFERENCES, JSON.stringify(defaults), false);
     return defaults;
   }
 }
@@ -540,7 +540,7 @@ export function getTripHistory(): PastTrip[] {
   if (!raw) {
     const defaults = [...MOCK_PAST_TRIPS];
     try {
-      setItem(STORAGE_KEYS.TRIP_HISTORY, JSON.stringify(defaults));
+      setItem(STORAGE_KEYS.TRIP_HISTORY, JSON.stringify(defaults), false);
     } catch {
       // Ignore write failure
     }
@@ -552,7 +552,7 @@ export function getTripHistory(): PastTrip[] {
     if (!Array.isArray(parsed)) {
       console.warn('[m3 storage] Trip history payload is not an array. Recovering defaults.');
       const defaults = [...MOCK_PAST_TRIPS];
-      setItem(STORAGE_KEYS.TRIP_HISTORY, JSON.stringify(defaults));
+      setItem(STORAGE_KEYS.TRIP_HISTORY, JSON.stringify(defaults), false);
       return defaults;
     }
 
@@ -560,7 +560,7 @@ export function getTripHistory(): PastTrip[] {
     if (validTrips.length === 0 && parsed.length > 0) {
       console.warn('[m3 storage] No valid trip records found in corrupted array. Recovering defaults.');
       const defaults = [...MOCK_PAST_TRIPS];
-      setItem(STORAGE_KEYS.TRIP_HISTORY, JSON.stringify(defaults));
+      setItem(STORAGE_KEYS.TRIP_HISTORY, JSON.stringify(defaults), false);
       return defaults;
     }
 
@@ -568,7 +568,7 @@ export function getTripHistory(): PastTrip[] {
   } catch (err) {
     console.error('[m3 storage] Corrupted JSON in trip history storage. Recovering defaults.', err);
     const defaults = [...MOCK_PAST_TRIPS];
-    setItem(STORAGE_KEYS.TRIP_HISTORY, JSON.stringify(defaults));
+    setItem(STORAGE_KEYS.TRIP_HISTORY, JSON.stringify(defaults), false);
     return defaults;
   }
 }
