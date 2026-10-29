@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Zap, ShieldCheck } from 'lucide-react';
+import { Zap } from 'lucide-react';
 
 interface HeaderProps {
   onOpenProfile?: () => void;
@@ -35,15 +35,15 @@ export const Header: React.FC<HeaderProps> = ({ onOpenProfile, activeSaccoCount 
             <span className="font-semibold text-[11px]">e-Fleet Live</span>
           </div>
 
-          <div
+          <button
+            type="button"
             onClick={onOpenProfile}
-            role="button"
-            tabIndex={0}
-            className="w-8 h-8 rounded-full bg-[#0b1b3d] text-white flex items-center justify-center font-bold text-xs shadow-xs hover:bg-slate-800 transition cursor-pointer"
+            aria-label="Open account"
+            className="w-9 h-9 rounded-full bg-[#0b1b3d] text-white flex items-center justify-center font-bold text-xs shadow-xs hover:bg-slate-800 transition cursor-pointer"
             title="Aj Muchiri (Account)"
           >
             AM
-          </div>
+          </button>
         </div>
       </div>
     </header>

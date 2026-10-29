@@ -29,6 +29,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
             <button
               key={item.id}
               onClick={() => onTabChange(item.id)}
+              aria-current={isActive ? 'page' : undefined}
               className={`flex flex-col items-center justify-center py-1 px-5 rounded-2xl transition-all duration-200 ${
                 isActive
                   ? 'text-[#0b1b3d] font-bold'
@@ -37,13 +38,10 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange })
             >
               <div
                 className={`relative p-1.5 rounded-full transition-all duration-200 ${
-                  isActive ? 'bg-[#0b1b3d] text-white shadow-sm' : 'text-[#6b7280]'
+                  isActive ? 'bg-[#e8f4ee] text-[#0b1b3d]' : 'text-[#6b7280]'
                 }`}
               >
                 <Icon className="w-5 h-5 transition-transform" />
-                {isActive && (
-                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#00e575] ring-2 ring-white" />
-                )}
               </div>
               <span className={`text-[11px] mt-1 tracking-tight ${isActive ? 'font-bold text-[#0b1b3d]' : ''}`}>
                 {item.label}

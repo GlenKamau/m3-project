@@ -213,7 +213,7 @@ export const NairobiMap: React.FC<NairobiMapProps> = ({
               <span class="text-[11px] font-bold tracking-tight">${vehicle.routeNumber}</span>
               ${
                 isElectric
-                  ? '<span class="text-[10px] text-[#00e575] font-extrabold leading-none">⚡</span>'
+                  ? '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="#318b68" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/></svg>'
                   : ''
               }
             </div>
@@ -598,7 +598,10 @@ export const NairobiMap: React.FC<NairobiMapProps> = ({
                   <span>{inspectedVehicle.plate}</span>
                   {inspectedVehicle.isElectric && (
                     <span className="text-[10px] font-bold text-[#006d43] bg-emerald-100 px-1.5 py-0.2 rounded-full">
-                      ⚡ Electric
+                      <span className="inline-flex items-center gap-0.5">
+                        <Zap className="w-3 h-3" aria-hidden="true" />
+                        Electric
+                      </span>
                     </span>
                   )}
                 </div>

@@ -156,7 +156,7 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
   };
 
   return (
-    <div className="pb-24 pt-2 px-4 max-w-xl mx-auto space-y-5">
+    <div className="pb-24 pt-5 px-4 max-w-3xl mx-auto space-y-5">
       {/* Toast Alert */}
       {toastMessage && (
         <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-[#0b1b3d] text-white text-xs font-semibold px-4 py-2 rounded-full shadow-lg border border-slate-700 animate-in fade-in duration-200">
@@ -340,7 +340,7 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
                       <span className="truncate">{sacco.name}</span>
                       {sacco.isElectric && (
                         <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded-full font-bold">
-                          ⚡
+                          <Zap className="w-3 h-3" aria-hidden="true" />
                         </span>
                       )}
                     </div>
@@ -726,4 +726,3 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
     </div>
   );
 };
-

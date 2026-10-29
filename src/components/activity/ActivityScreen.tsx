@@ -905,7 +905,7 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
                 )}
                 <span>{sacco.name}</span>
                 {sacco.isElectric && (
-                  <span className="text-[10px] text-emerald-400">⚡</span>
+                  <Zap className="w-3 h-3 text-emerald-500" aria-hidden="true" />
                 )}
               </button>
             );
@@ -1048,7 +1048,10 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
                             <span>{bus.plate}</span>
                             {bus.isElectric && (
                               <span className="text-[10px] font-bold text-[#006d43] bg-emerald-100 px-1.5 py-0.2 rounded-full">
-                                ⚡ Electric
+                                <span className="inline-flex items-center gap-0.5">
+                                  <Zap className="w-3 h-3" aria-hidden="true" />
+                                  Electric
+                                </span>
                               </span>
                             )}
                             {isPreferred && (
@@ -1770,7 +1773,10 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
                         </span>
                         {trip.isElectric && (
                           <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded font-bold">
-                            ⚡ e-Ride
+                            <span className="inline-flex items-center gap-0.5">
+                              <Zap className="w-3 h-3" aria-hidden="true" />
+                              e-Ride
+                            </span>
                           </span>
                         )}
                       </div>
